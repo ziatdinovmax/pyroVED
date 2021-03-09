@@ -43,7 +43,7 @@ class trVAE(nn.Module):
             coord = 1
         self.encoder_net = fcEncoderNet(
             in_dim, latent_dim+coord, 0, hidden_dim_e,
-            num_layers_e, activation, softplus_sd=True)
+            num_layers_e, activation, softplus_out=True)
         if coord not in [0, 1, 2, 3]:
             raise ValueError("'coord' argument must be 0, 1, 2 or 3")
         dnet = sDecoderNet if coord in [1, 2, 3] else fcDecoderNet

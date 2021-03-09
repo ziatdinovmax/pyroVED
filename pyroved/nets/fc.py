@@ -218,7 +218,7 @@ def make_fc_layers(in_dim: int,
         hidden_dim_ = in_dim if i == 0 else hidden_dim
         fc_layers.extend(
             [nn.Linear(hidden_dim_, hidden_dim),
-             get_activation[activation]()])
+             get_activation(activation)()])
     fc_layers = nn.Sequential(*fc_layers)
     return fc_layers
 
