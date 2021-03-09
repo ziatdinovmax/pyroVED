@@ -1,25 +1,17 @@
-from typing import Optional, Tuple, Type, Union, List
+"""
+fc.py
+
+Module for creating fully-connected encoder and decoder modules
+
+Created by Maxim Ziatdinov (ziatdinovmax@gmail.com)
+"""
+
+from typing import List, Tuple, Type, Union
+
 import torch
 import torch.nn as nn
 import torch.tensor as tt
-
-def make_fc_layers(in_dim: int,
-                   hidden_dim: int = 128,
-                   num_layers: int = 2,
-                   activation: str = "tanh"
-                   ) -> Type[nn.Module]:
-    """
-    Generates a module with stacked fully-connected (aka dense) layers
-    """
-    activations = {"tanh": nn.Tanh, "lrelu": nn.LeakyReLU, "softplus": nn.Softplus}
-    fc_layers = []
-    for i in range(num_layers):
-        hidden_dim_ = in_dim if i == 0 else hidden_dim
-        fc_layers.extend(
-            [nn.Linear(hidden_dim_, hidden_dim),
-            activations[activation]()])
-    fc_layers = nn.Sequential(*fc_layers)
-    return fc_layers
+from pyro.distributions.util import broadcast_shape
 
 
 class Concat(nn.Module):
@@ -49,7 +41,7 @@ class fcEncoderNet(nn.Module):
                  in_dim: Tuple[int],
                  latent_dim: int = 2,
                  num_classes: int = 0,
-                 hidden_dim:int = 128,
+                 hidden_dim: int = 128,
                  num_layers: int = 2,
                  activation: str = 'tanh',
                  softplus_out: bool = True,
@@ -86,7 +78,7 @@ class fcDecoderNet(nn.Module):
                  out_dim: Tuple[int],
                  latent_dim: int,
                  num_classes: int = 0,
-                 hidden_dim:int = 128,
+                 hidden_dim: int = 128,
                  num_layers: int = 2,
                  activation: str = 'tanh',
                  sigmoid_out: bool = True,
@@ -115,9 +107,9 @@ class fcDecoderNet(nn.Module):
         return x
 
 
-class rDecoderNet(nn.Module):
+class sDecoderNet(nn.Module):
     """
-    Spatial decoder for VAE
+    Spatial generator (decoder) network with fully-connected layers
     """
     def __init__(self,
                  out_dim: Tuple[int],
@@ -129,19 +121,20 @@ class rDecoderNet(nn.Module):
                  sigmoid_out: bool = True,
                  unflat: bool = True
                  ) -> None:
-        super(rDecoderNet, self).__init__()
+        super(sDecoderNet, self).__init__()
         if len(out_dim) not in [1, 2, 3]:
             raise ValueError("in_dim must be (h, w), (h, w, c), or (l,)")
         self.unflat = unflat
         if self.unflat:
             self.reshape = out_dim
-        coord_dim = 1 if len(out_dim) < 2 else 2 
+        coord_dim = 1 if len(out_dim) < 2 else 2
 
         self.concat = Concat()
-        self.coord_latent = coord_latent(latent_dim+num_classes, hidden_dim, coord_dim)
+        self.coord_latent = coord_latent(
+            latent_dim+num_classes, hidden_dim, coord_dim)
         self.fc_layers = make_fc_layers(
             hidden_dim, hidden_dim, num_layers, activation)
-        self.out = nn.Linear(hidden_dim, 1) # need to generalize to multi-channel (c > 1)
+        self.out = nn.Linear(hidden_dim, 1)  # need to generalize to multi-channel (c > 1)
         self.activation_out = nn.Sigmoid() if sigmoid_out else lambda x: x
 
     def forward(self, x_coord: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
@@ -153,9 +146,11 @@ class rDecoderNet(nn.Module):
             return x.view(-1, *self.reshape)
         return x
 
+
 class coord_latent(nn.Module):
     """
-    Spatial decoder's coordinate module
+    The "spatial" part of the trVAE's decoder that allows for translational
+    and rotational invariance (based on https://arxiv.org/abs/1909.11663)
     """
     def __init__(self,
                  latent_dim: int,
@@ -175,10 +170,62 @@ class coord_latent(nn.Module):
         h_x = self.fc_coord(x_coord)
         h_x = h_x.reshape(batch_dim, n, -1)
         h_z = self.fc_latent(z)
-        
+
         h_z = h_z.view(-1, h_z.size(-1))
         h = h_x.add(h_z.unsqueeze(1))
         h = h.reshape(batch_dim * n, -1)
         if self.activation is not None:
             h = self.activation(h)
         return h
+
+
+class fcClassifierNet(nn.Module):
+    """
+    Simple classification neural network
+    """
+    def __init__(self,
+                 in_dim: Tuple[int],
+                 num_classes: int,
+                 hidden_dim: int = 128,
+                 num_layers: int = 2,
+                 activation: str = 'tanh'
+                 ) -> None:
+        super(fcClassifierNet, self).__init__()
+        if len(in_dim) not in [1, 2, 3]:
+            raise ValueError("in_dim must be (h, w), (h, w, c), or (l,)")
+        self.in_dim = torch.prod(tt(in_dim)).item()
+
+        self.fc_layers = make_fc_layers(
+            self.in_dim, hidden_dim, num_layers, activation)
+        self.out = nn.Linear(hidden_dim, num_classes)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.fc_layers(x)
+        x = self.out(x)
+        return torch.softmax(x, dim=-1)
+
+
+def make_fc_layers(in_dim: int,
+                   hidden_dim: int = 128,
+                   num_layers: int = 2,
+                   activation: str = "tanh"
+                   ) -> Type[nn.Module]:
+    """
+    Generates a module with stacked fully-connected (aka dense) layers
+    """
+    fc_layers = []
+    for i in range(num_layers):
+        hidden_dim_ = in_dim if i == 0 else hidden_dim
+        fc_layers.extend(
+            [nn.Linear(hidden_dim_, hidden_dim),
+             get_activation[activation]()])
+    fc_layers = nn.Sequential(*fc_layers)
+    return fc_layers
+
+
+def get_activation(activation: int) -> Type[nn.Module]:
+    if activation is None:
+        return
+    activations = {"lrelu": nn.LeakyReLU, "tanh": nn.Tanh,
+                   "softplus": nn.Softplus, "relu": nn.ReLU}
+    return activations[activation]
