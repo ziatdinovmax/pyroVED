@@ -1,0 +1,5 @@
+setuptools>=41.0.1
+flake8>=3.7.9
+pyro-ppl>=1.6.0
+matplotlib>=3.1.1
+torchvision>=0.7.0
