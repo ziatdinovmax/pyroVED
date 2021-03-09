@@ -13,7 +13,7 @@ with open(os.path.join(module_dir, 'pyroved/__version__.py')) as f:
 
 if __name__ == "__main__":
     setup(
-        name='atomai',
+        name='pyroved',
         python_requires='>=3.6',
         version=__version__,
         description='Variational encoder-decoder models',
