@@ -49,7 +49,7 @@ class sstrVAE(nn.Module):
         self.decoder = dnet(
             in_dim, latent_dim, num_classes, hidden_dim_d,
             num_layers_d, unflat=False)
-        self.sampler_d = get_sampler[sampler_d]
+        self.sampler_d = get_sampler(sampler_d)
         self.z_dim = latent_dim + coord
         self.num_classes = num_classes
         self.coord = coord
