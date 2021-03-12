@@ -26,12 +26,13 @@ def init_dataloader(*args: torch.Tensor,
 
 def init_ssvae_dataloaders(data_unsup: torch.Tensor,
                            data_sup: Tuple[torch.Tensor],
-                           data_val: Tuple[torch.Tensor]
+                           data_val: Tuple[torch.Tensor],
+                           **kwargs: int
                            ) -> Tuple[Type[torch.utils.data.DataLoader]]:
 
-    loader_unsup = init_dataloader(data_unsup)
-    loader_sup = init_dataloader(*data_sup, sampler=True)
-    loader_val = init_dataloader(*data_val)
+    loader_unsup = init_dataloader(data_unsup, **kwargs)
+    loader_sup = init_dataloader(*data_sup, sampler=True, **kwargs)
+    loader_val = init_dataloader(*data_val, **kwargs)
     return loader_unsup, loader_sup, loader_val
 
 

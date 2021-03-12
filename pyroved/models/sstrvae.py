@@ -88,7 +88,10 @@ class sstrVAE(nn.Module):
                 if torch.sum(dx) != 0:
                     dx = (dx * self.dx_prior).unsqueeze(1)
                 # transform coordinate grid
-                expdim = dx.shape[0] if self.coord > 1 else phi.shape[0]
+                if self.ndim > 1:
+                    expdim = dx.shape[0] if self.coord > 1 else phi.shape[0]
+                else:
+                    expdim = dx.shape[0]
                 grid = self.grid.expand(expdim, *self.grid.shape)
                 x_coord_prime = transform_coordinates(grid, phi, dx)
             # sample label from the constant prior or observe the value
