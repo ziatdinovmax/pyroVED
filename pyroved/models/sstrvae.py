@@ -19,7 +19,7 @@ class sstrVAE(nn.Module):
     and/or translational invariance
     """
     def __init__(self,
-                 in_dim: Tuple[int],
+                 data_dim: Tuple[int],
                  latent_dim: int,
                  num_classes: int,
                  coord: int = 3,
@@ -34,26 +34,31 @@ class sstrVAE(nn.Module):
                  seed: int = 1,
                  **kwargs
                  ) -> None:
+        """
+        Initializes sstrVAE parameters
+        """
         super(sstrVAE, self).__init__()
         pyro.clear_param_store()
         set_deterministic_mode(seed)
         if coord not in [0, 1, 2, 3]:
             raise ValueError("'coord' argument must be 0, 1, 2 or 3")
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.ndim = len(data_dim)
+        self.data_dim = data_dim
         self.encoder_z = fcEncoderNet(
-            in_dim, latent_dim+coord, num_classes,
+            data_dim, latent_dim+coord, num_classes,
             hidden_dim_e, num_layers_e, flat=False)
         self.encoder_y = fcClassifierNet(
-            in_dim, num_classes, hidden_dim_cls, num_layers_cls)
+            data_dim, num_classes, hidden_dim_cls, num_layers_cls)
         dnet = sDecoderNet if coord in [1, 2, 3] else fcDecoderNet
         self.decoder = dnet(
-            in_dim, latent_dim, num_classes, hidden_dim_d,
+            data_dim, latent_dim, num_classes, hidden_dim_d,
             num_layers_d, unflat=False)
         self.sampler_d = get_sampler(sampler_d)
         self.z_dim = latent_dim + coord
         self.num_classes = num_classes
         self.coord = coord
-        self.grid = generate_grid(in_dim).to(self.device)
+        self.grid = generate_grid(data_dim).to(self.device)
         self.dx_prior = kwargs.get("dx_prior", 0.1)
         self.aux_loss_multiplier = aux_loss_multiplier
         self.to(self.device)
@@ -248,6 +253,7 @@ class sstrVAE(nn.Module):
                 loc = self.decoder(*d_args)
                 loc_all.append(loc.detach().cpu())
         loc_all = torch.cat(loc_all)
+        loc_all = loc_all.view(-1, *self.data_dim)
 
         if self.ndim == 2:
             plot_img_grid(

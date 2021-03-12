@@ -18,7 +18,7 @@ class trVAE(nn.Module):
     Variational autoencoder with rotational and/or transaltional invariance
     """
     def __init__(self,
-                 in_dim: Tuple[int],
+                 data_dim: Tuple[int],
                  latent_dim: int = 2,
                  coord: int = 3,
                  num_classes: int = 0,
@@ -38,23 +38,23 @@ class trVAE(nn.Module):
         pyro.clear_param_store()
         set_deterministic_mode(seed)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.ndim = len(in_dim)
+        self.ndim = len(data_dim)
         if self.ndim == 1 and coord > 0:
             coord = 1
         self.encoder_net = fcEncoderNet(
-            in_dim, latent_dim+coord, 0, hidden_dim_e,
+            data_dim, latent_dim+coord, 0, hidden_dim_e,
             num_layers_e, activation, softplus_out=True)
         if coord not in [0, 1, 2, 3]:
             raise ValueError("'coord' argument must be 0, 1, 2 or 3")
         dnet = sDecoderNet if coord in [1, 2, 3] else fcDecoderNet
         self.decoder_net = dnet(
-            in_dim, latent_dim, num_classes, hidden_dim_d,
+            data_dim, latent_dim, num_classes, hidden_dim_d,
             num_layers_d, activation, sigmoid_out=True)
         self.sampler_d = get_sampler(sampler_d)
         self.z_dim = latent_dim + coord
         self.coord = coord
         self.num_classes = num_classes
-        self.grid = generate_grid(in_dim).to(self.device)
+        self.grid = generate_grid(data_dim).to(self.device)
         self.dx_prior = tt(kwargs.get("dx_prior", 0.1)).to(self.device)
         self.to(self.device)
 
