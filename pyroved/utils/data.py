@@ -7,14 +7,32 @@ from torchvision import datasets
 from torchvision.transforms import ToTensor
 
 
-def init_dataloader(*args: torch.Tensor, **kwargs: int
+def init_dataloader(*args: torch.Tensor,
+                    random_sampler: bool = False,
+                    **kwargs: int
                     ) -> Type[torch.utils.data.DataLoader]:
 
     batch_size = kwargs.get("batch_size", 100)
     tensor_set = torch.utils.data.dataset.TensorDataset(*args)
-    data_loader = torch.utils.data.DataLoader(
-        dataset=tensor_set, batch_size=batch_size, shuffle=True)
+    if random_sampler:
+        sampler = torch.utils.data.RandomSampler(train_data)
+        data_loader = torch.utils.data.DataLoader(
+            dataset=tensor_set, batch_size=batch_size, sampler=sampler)
+    else:
+        data_loader = torch.utils.data.DataLoader(
+            dataset=tensor_set, batch_size=batch_size, shuffle=True)
     return data_loader
+
+
+def init_ssvae_dataloaders(data_unsup: torch.Tensor,
+                           data_sup: Tuple[torch.Tensor],
+                           data_val: Tuple[torch.Tensor]
+                           ) -> Tuple[Type[torch.utils.data.DataLoader]]:
+                           
+    loader_unsup = init_dataloader(data_unsup)
+    loader_sup = init_dataloader(*data_sup, sampler=True)
+    loader_val = init_dataloader(*data_val)
+    return loader_unsup, loader_sup, loader_val
 
 
 def get_rotated_mnist(rotation_range: Tuple[int]) -> Tuple[torch.Tensor]:
