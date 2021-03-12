@@ -179,7 +179,8 @@ class trVAE(nn.Module):
         z_scale = z[:, self.z_dim:]
         return z_loc, z_scale
 
-    def manifold2d(self, d: int, **kwargs: Union[str, int]) -> torch.Tensor:
+    def manifold2d(self, d: int, plot: bool = True,
+                   **kwargs: Union[str, int]) -> torch.Tensor:
         """
         Plots a learned latent manifold in the image space
         """
@@ -198,13 +199,12 @@ class trVAE(nn.Module):
                 loc = self.decoder_net(*d_args)
                 loc_all.append(loc.detach().cpu())
         loc_all = torch.cat(loc_all)
-
-        if self.ndim == 2:
-            plot_img_grid(
-                loc_all, d,
-                extent=[grid_x.min(), grid_x.max(), grid_y.min(), grid_y.max()],
-                **kwargs)
-        elif self.ndim == 1:
-            plot_spect_grid(loc_all, d)
-
+        if plot:
+            if self.ndim == 2:
+                plot_img_grid(
+                    loc_all, d,
+                    extent=[grid_x.min(), grid_x.max(), grid_y.min(), grid_y.max()],
+                    **kwargs)
+            elif self.ndim == 1:
+                plot_spect_grid(loc_all, d)
         return loc_all

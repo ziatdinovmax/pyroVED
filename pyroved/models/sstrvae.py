@@ -44,6 +44,8 @@ class sstrVAE(nn.Module):
             raise ValueError("'coord' argument must be 0, 1, 2 or 3")
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.ndim = len(data_dim)
+        if self.ndim == 1 and coord > 0:
+            coord = 1
         self.data_dim = data_dim
         self.encoder_z = fcEncoderNet(
             data_dim, latent_dim+coord, num_classes,
@@ -125,10 +127,15 @@ class sstrVAE(nn.Module):
         zdims = list(zs.shape)
         zdims[-1] = zdims[-1] - self.coord
         zs = zs.view(-1, zs.size(-1))
+        # For 1D, there is only translation
+        if self.ndim == 1:
+            dx = zs[:, 0:1]
+            zs = zs[:, 1:]
+            return None, dx, zs.view(*zdims)
         phi, dx = tt(0), tt(0)
         # rotation + translation
         if self.coord == 3:
-            phi = zs[:, 0] # encoded angle
+            phi = zs[:, 0]  # encoded angle
             dx = zs[:, 1:3]  # translation
             zs = zs[:, 3:]  # image content
         # translation only
@@ -236,7 +243,8 @@ class sstrVAE(nn.Module):
         z_scale = z[:, self.z_dim:]
         return z_loc, z_scale, y_pred
 
-    def manifold2d(self, d: int, **kwargs: Union[str, int]) -> torch.Tensor:
+    def manifold2d(self, d: int, plot: bool=True,
+                   **kwargs: Union[str, int]) -> torch.Tensor:
         """
         Returns a learned latent manifold in the image space
         """
@@ -254,13 +262,12 @@ class sstrVAE(nn.Module):
                 loc_all.append(loc.detach().cpu())
         loc_all = torch.cat(loc_all)
         loc_all = loc_all.view(-1, *self.data_dim)
-
-        if self.ndim == 2:
-            plot_img_grid(
-                loc_all, d,
-                extent=[grid_x.min(), grid_x.max(), grid_y.min(), grid_y.max()],
-                **kwargs)
-        elif self.ndim == 1:
-            plot_spect_grid(loc_all, d)
-
+        if plot:
+            if self.ndim == 2:
+                plot_img_grid(
+                    loc_all, d,
+                    extent=[grid_x.min(), grid_x.max(), grid_y.min(), grid_y.max()],
+                    **kwargs)
+            elif self.ndim == 1:
+                plot_spect_grid(loc_all, d)
         return loc_all
