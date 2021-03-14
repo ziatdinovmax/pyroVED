@@ -257,7 +257,7 @@ class sstrVAE(nn.Module):
             z = z.append(grid.to(self.device))
         with torch.no_grad():
             loc = self.decoder_net(*z)
-        return loc
+        return loc.view(-1, *self.data_dim)
 
     def manifold2d(self, d: int, plot: bool = True,
                    **kwargs: Union[str, int]) -> torch.Tensor:
