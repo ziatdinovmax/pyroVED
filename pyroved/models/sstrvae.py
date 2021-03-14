@@ -246,7 +246,20 @@ class sstrVAE(nn.Module):
         z_scale = z[:, self.z_dim:]
         return z_loc, z_scale, y_pred
 
-    def manifold2d(self, d: int, plot: bool=True,
+    def decode(self, z: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
+        """
+        Decodes a batch of latent coordnates
+        """
+        z = torch.cat([z.to(self.device), y.to(self.device)], -1)
+        z = [z]
+        if self.coord > 0:
+            grid = self.grid.expand(z.shape[0], *self.grid.shape)
+            z = z.append(grid.to(self.device))
+        with torch.no_grad():
+            loc = self.decoder_net(*z)
+        return loc
+
+    def manifold2d(self, d: int, plot: bool = True,
                    **kwargs: Union[str, int]) -> torch.Tensor:
         """
         Returns a learned latent manifold in the image space
