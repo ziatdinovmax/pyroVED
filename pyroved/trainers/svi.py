@@ -11,7 +11,19 @@ from ..utils import set_deterministic_mode
 class SVItrainer:
     """
     Stochastic variational inference (SVI) trainer for
-    unsupervised and class-conditioned variational models
+    unsupervised and class-conditioned VED models consisting
+    one encoder and one decoder.
+
+    Args:
+        model:
+            Initialized model. Must be a subclass of torch.nn.Module
+            and have self.model and self.guide methods
+        optimizer:
+            Pyro optimizer (Defaults to Adam with learning rate 1e-3)
+        loss:
+            ELBO objective (Defaults to pyro.infer.Trace_ELBO)
+        seed:
+            Enforces reproducibility
     """
     def __init__(self,
                  model: Type[torch.nn.Module],
@@ -84,9 +96,11 @@ class SVItrainer:
         """
         Single training and (optionally) evaluation step
         """
-        self.loss_history["training_loss"].append(self.train(train_loader,**kwargs))
+        train_loss = self.train(train_loader, **kwargs)
+        self.loss_history["training_loss"].append(train_loss)
         if test_loader is not None:
-            self.loss_history["test_loss"].append(self.evaluate(test_loader,**kwargs))
+            test_loss = self.evaluate(test_loader, **kwargs)
+            self.loss_history["test_loss"].append(test_loss)
         self.current_epoch += 1
 
     def print_statistics(self) -> None:

@@ -13,6 +13,15 @@ class auxSVItrainer:
     """
     Stochastic variational inference (SVI) trainer for variational models
     with auxillary losses
+
+    Args:
+        model:
+            Initialized model. Must be a subclass of torch.nn.Module
+            and have self.model and self.guide methods
+        optimizer:
+            Pyro optimizer (Defaults to Adam with learning rate 5e-4)
+        seed:
+            Enforces reproducibility
     """
 
     def __init__(self,
@@ -29,9 +38,10 @@ class auxSVItrainer:
         if optimizer is None:
             optimizer = optim.Adam({"lr": 5e-4})
         guide = infer.config_enumerate(model.guide, "parallel", expand=True)
+        loss = pyro.infer.TraceEnum_ELBO
         self.loss_basic = infer.SVI(
             model.model, guide, optimizer,
-            loss=(pyro.infer.TraceEnum_ELBO)(max_plate_nesting=1, strict_enumeration_warning=False))
+            loss=(loss)(max_plate_nesting=1, strict_enumeration_warning=False))
         self.loss_aux = infer.SVI(
             model.model_classify, model.guide_classify,
             optimizer, loss=pyro.infer.Trace_ELBO())
@@ -39,7 +49,6 @@ class auxSVItrainer:
 
         self.history = {"training_loss": [], "test_accuracy": []}
         self.current_epoch = 0
-
 
     def compute_loss(self,
                      xs: torch.Tensor,
