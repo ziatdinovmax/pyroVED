@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, Type
 
 import pyro
 import pyro.distributions as dist
@@ -144,6 +144,18 @@ class trVAE(nn.Module):
             phi = z[:, 0]
             z = z[:, 1:]
         return phi, dx, z
+
+    def set_encoder(self, encoder_net: Type[torch.nn.Module]) -> None:
+        """
+        Sets a user-defined encoder network
+        """
+        self.encoder_z = encoder_net
+
+    def set_decoder(self, decoder_net: Type[torch.nn.Module]) -> None:
+        """
+        Sets a user-defined decoder network
+        """
+        self.decoder = decoder_net
 
     def _encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """

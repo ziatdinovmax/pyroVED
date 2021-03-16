@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, Type
 
 import pyro
 import pyro.distributions as dist
@@ -170,9 +170,27 @@ class sstrVAE(nn.Module):
 
     def guide_classify(self, xs, ys=None):
         """
-        dummy guide function to accompany model_classify
+        Dummy guide function to accompany model_classify
         """
         pass
+
+    def set_encoder(self, encoder_net: Type[torch.nn.Module]) -> None:
+        """
+        Sets a user-defined encoder network
+        """
+        self.encoder_z = encoder_net
+
+    def set_decoder(self, decoder_net: Type[torch.nn.Module]) -> None:
+        """
+        Sets a user-defined decoder network
+        """
+        self.decoder = decoder_net
+
+    def set_classifier(self, cls_net: Type[torch.nn.Module]) -> None:
+        """
+        Sets a user-defined classification network
+        """
+        self.encoder_y = cls_net
 
     def classifier(self,
                    x_new: torch.Tensor,
