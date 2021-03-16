@@ -61,7 +61,10 @@ class sstrVAE(nn.Module):
         self.num_classes = num_classes
         self.coord = coord
         self.grid = generate_grid(data_dim).to(self.device)
-        self.dx_prior = kwargs.get("dx_prior", 0.1)
+        dx_pri = tt(kwargs.get("dx_prior", 0.1))
+        dy_pri = tt(kwargs.get("dy_prior", dx_pri))
+        t_prior = torch.stack([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
+        self.t_prior = t_prior.to(self.device)
         self.aux_loss_multiplier = aux_loss_multiplier
         self.to(self.device)
 
@@ -86,7 +89,7 @@ class sstrVAE(nn.Module):
             if self.coord > 0:
                 phi, dx, zs = self.split_latent(zs)
                 if torch.sum(dx) != 0:
-                    dx = (dx * self.dx_prior).unsqueeze(1)
+                    dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
                 if self.ndim > 1:
                     expdim = dx.shape[0] if self.coord > 1 else phi.shape[0]
