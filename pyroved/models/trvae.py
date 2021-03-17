@@ -28,8 +28,9 @@ class trVAE(nn.Module):
                  num_layers_d: int = 2,
                  activation: str = "tanh",
                  sampler_d: str = "bernoulli",
+                 sigmoid_d: bool = True,
                  seed: int = 1,
-                 **kwargs
+                 **kwargs: float
                  ) -> None:
         """
         Initializes rVAE's modules and parameters
@@ -49,8 +50,8 @@ class trVAE(nn.Module):
         dnet = sDecoderNet if coord in [1, 2, 3] else fcDecoderNet
         self.decoder_net = dnet(
             data_dim, latent_dim, num_classes, hidden_dim_d,
-            num_layers_d, activation, sigmoid_out=True)
-        self.sampler_d = get_sampler(sampler_d)
+            num_layers_d, activation, sigmoid_out=sigmoid_d)
+        self.sampler_d = get_sampler(sampler_d, **kwargs)
         self.z_dim = latent_dim + coord
         self.coord = coord
         self.num_classes = num_classes

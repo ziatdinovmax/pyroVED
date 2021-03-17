@@ -31,8 +31,9 @@ class sstrVAE(nn.Module):
                  num_layers_d: int = 2,
                  num_layers_cls: int = 2,
                  sampler_d: str = "bernoulli",
+                 sigmoid_d: bool = True,
                  seed: int = 1,
-                 **kwargs
+                 **kwargs: float
                  ) -> None:
         """
         Initializes sstrVAE parameters
@@ -55,8 +56,8 @@ class sstrVAE(nn.Module):
         dnet = sDecoderNet if coord in [1, 2, 3] else fcDecoderNet
         self.decoder = dnet(
             data_dim, latent_dim, num_classes, hidden_dim_d,
-            num_layers_d, unflat=False)
-        self.sampler_d = get_sampler(sampler_d)
+            num_layers_d, sigmoid_out=sigmoid_d, unflat=False)
+        self.sampler_d = get_sampler(sampler_d, **kwargs)
         self.z_dim = latent_dim + coord
         self.num_classes = num_classes
         self.coord = coord
