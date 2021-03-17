@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, Type
 
 import pyro
 import pyro.distributions as dist
@@ -55,7 +55,10 @@ class trVAE(nn.Module):
         self.coord = coord
         self.num_classes = num_classes
         self.grid = generate_grid(data_dim).to(self.device)
-        self.dx_prior = tt(kwargs.get("dx_prior", 0.1)).to(self.device)
+        dx_pri = tt(kwargs.get("dx_prior", 0.1))
+        dy_pri = kwargs.get("dy_prior", dx_pri.clone())
+        t_prior = tt([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
+        self.t_prior = t_prior.to(self.device)
         self.to(self.device)
 
     def model(self,
@@ -82,7 +85,7 @@ class trVAE(nn.Module):
                 # and/or translation and image content
                 phi, dx, z = self.split_latent(z)
                 if torch.sum(dx) != 0:
-                    dx = (dx * self.dx_prior).unsqueeze(1)
+                    dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
                 grid = self.grid.expand(x.shape[0], *self.grid.shape)
                 x_coord_prime = transform_coordinates(grid, phi, dx)
@@ -141,6 +144,18 @@ class trVAE(nn.Module):
             phi = z[:, 0]
             z = z[:, 1:]
         return phi, dx, z
+
+    def set_encoder(self, encoder_net: Type[torch.nn.Module]) -> None:
+        """
+        Sets a user-defined encoder network
+        """
+        self.encoder_z = encoder_net
+
+    def set_decoder(self, decoder_net: Type[torch.nn.Module]) -> None:
+        """
+        Sets a user-defined decoder network
+        """
+        self.decoder = decoder_net
 
     def _encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
