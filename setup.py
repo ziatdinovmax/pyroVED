@@ -28,7 +28,6 @@ if __name__ == "__main__":
         install_requires=[
             'pyro-ppl>=1.6.0',
             'matplotlib>=3.2,<3.4',
-            'scipy>=1.3.0',
             'torchvision>=0.7.0'
         ],
         classifiers=['Programming Language :: Python',

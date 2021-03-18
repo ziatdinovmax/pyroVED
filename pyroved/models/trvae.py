@@ -271,8 +271,8 @@ class trVAE(nn.Module):
         if self.num_classes > 0:
             cls = tt(kwargs.get("label", 0))
             cls = to_onehot(cls.unsqueeze(0), self.num_classes)
-        grid_x = norm.ppf(torch.linspace(0.95, 0.05, d))
-        grid_y = norm.ppf(torch.linspace(0.05, 0.95, d))
+        grid_x = dist.Normal(0, 1).icdf(torch.linspace(0.95, 0.05, d))
+        grid_y = dist.Normal(0, 1).icdf(torch.linspace(0.05, 0.95, d))
         loc_all = []
         for xi in grid_x:
             for yi in grid_y:
