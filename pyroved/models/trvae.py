@@ -64,13 +64,13 @@ class trVAE(nn.Module):
     Initialize a VAE model with rotational invariance
     
     >>> data_dim = (28, 28)
-    >>> ssvae = sstrVAE(data_dim, latent_dim=2, coord=1)
+    >>> ssvae = trVAE(data_dim, latent_dim=2, coord=1)
 
     Initialize a class-conditioned VAE model with rotational invariance
     for dataset that has 10 classes
     
     >>> data_dim = (28, 28)
-    >>> ssvae = sstrVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
+    >>> ssvae = trVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
     """
     def __init__(self,
                  data_dim: Tuple[int],
