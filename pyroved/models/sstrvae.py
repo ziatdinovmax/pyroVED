@@ -5,7 +5,6 @@ import pyro.distributions as dist
 import torch
 import torch.nn as nn
 import torch.tensor as tt
-from scipy.stats import norm
 
 from ..nets import fcDecoderNet, fcEncoderNet, sDecoderNet, fcClassifierNet
 from ..utils import (generate_grid, get_sampler, plot_img_grid,
