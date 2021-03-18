@@ -15,7 +15,62 @@ from ..utils import (generate_grid, get_sampler, plot_img_grid,
 
 class trVAE(nn.Module):
     """
-    Variational autoencoder with rotational and/or transaltional invariance
+    Variational autoencoder that enforces rotational
+    and/or translational invariances
+
+    Args:
+        data_dim:
+            Dimensionality of the input data; use (h x w) for images
+            or (length,) for spectra.
+        latent_dim:
+            Number of latent dimensions.
+        coord:
+            For 2D systems, *coord=0* is vanilla VAE, *coord=1* enforces
+            rotational invariance, *coord=2* enforces invariance to translations,
+            and *coord=3* enforces both rotational and translational invariances.
+            For 1D systems, *coord=0* is vanilla VAE and *coord>0* enforces
+            transaltional invariance.
+        num_classes:
+            Number of classes (if any) for class-conditioned (t)(r)VAE.
+        hidden_dim_e:
+            Number of hidden units per each layer in encoder (inference network).
+        hidden_dim_d:
+            Number of hidden units per each layer in decoder (generator network).
+        num_layers_e:
+            Number of layers in encoder (inference network).
+        num_layers_d:
+            Number of layers in decoder (generator network).
+        activation:
+            Non-linear activation for inner layers of encoder and decoder.
+            The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
+            hyberbolic tangent ('tanh'), and softplus ('softplus')
+            The default activation is 'tanh'.
+        sampler_d:
+            Decoder sampler, as defined as p(x|z) = sampler(decoder(z)).
+            The available samplers are 'bernoulli', 'continuous_bernoulli',
+            and 'gaussian' (Default: 'bernoulli').
+        sigmoid_d:
+            Sigmoid activation for the decoder output (Default: True)
+        seed:
+            Seed used in torch.manual_seed(seed) and
+            torch.cuda.manual_seed_all(seed)
+        kwargs:
+            Additional keyword arguments are *dx_prior* and *dy_prior* for setting
+            a translational prior(s), and *decoder_sig* for setting sigma
+            in the decoder's sampler when it is set to "gaussian".
+
+    Example:
+
+    Initialize a VAE model with rotational invariance
+    
+    >>> data_dim = (28, 28)
+    >>> ssvae = trVAE(data_dim, latent_dim=2, coord=1)
+
+    Initialize a class-conditioned VAE model with rotational invariance
+    for dataset that has 10 classes
+    
+    >>> data_dim = (28, 28)
+    >>> ssvae = trVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
     """
     def __init__(self,
                  data_dim: Tuple[int],

@@ -24,6 +24,18 @@ class SVItrainer:
             ELBO objective (Defaults to pyro.infer.Trace_ELBO)
         seed:
             Enforces reproducibility
+
+    Example:
+
+    >>> # Initialize model
+    >>> data_dim = (28, 28)
+    >>> rvae = pyroved.models.trVAE(data_dim, latent_dim=2, coord=1)
+    >>> # Initialize SVI trainer
+    >>> trainer = SVItrainer(rvae)
+    >>> # Train for 200 epochs:
+    >>> for _ in range(200):
+    >>>     trainer.step(train_loader)
+    >>>     trainer.print_statistics()
     """
     def __init__(self,
                  model: Type[torch.nn.Module],

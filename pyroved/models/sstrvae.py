@@ -17,6 +17,57 @@ class sstrVAE(nn.Module):
     """
     Semi-supervised variational autoencoder (VAE) with rotational
     and/or translational invariance
+
+    Args:
+        data_dim:
+            Dimensionality of the input data; use (h x w) for images
+            or (length,) for spectra.
+        latent_dim:
+            Number of latent dimensions.
+        num_classes:
+            Number of classes in the classification scheme
+        coord:
+            For 2D systems, *coord=0* is vanilla VAE, *coord=1* enforces
+            rotational invariance, *coord=2* enforces invariance to translations,
+            and *coord=3* enforces both rotational and translational invariances.
+            For 1D systems, *coord=0* is vanilla VAE and *coord>0* enforces
+            transaltional invariance.
+        aux_loss_multiplier:
+            Hyperparameter that modulates the importance of the auxiliary loss
+            term. See Eq. 9 in https://arxiv.org/abs/1406.5298. Default values is 20.
+        hidden_dim_e:
+            Number of hidden units per each layer in encoder (inference network).
+        hidden_dim_d:
+            Number of hidden units per each layer in decoder (generator network).
+        hidden_dim_cls:
+            Number of hidden units ("neurons") in each layer of classifier
+        num_layers_e:
+            Number of layers in encoder (inference network).
+        num_layers_d:
+            Number of layers in decoder (generator network).
+        num_layers_cls:
+            Number of layers in classifier
+        sampler_d:
+            Decoder sampler, as defined as p(x|z) = sampler(decoder(z)).
+            The available samplers are 'bernoulli', 'continuous_bernoulli',
+            and 'gaussian' (Default: 'bernoulli').
+        sigmoid_d:
+            Sigmoid activation for the decoder output (Default: True)
+        seed:
+            Seed used in torch.manual_seed(seed) and
+            torch.cuda.manual_seed_all(seed)
+        kwargs:
+            Additional keyword arguments are *dx_prior* and *dy_prior* for setting
+            a translational prior(s), and *decoder_sig* for setting sigma
+            in the decoder's sampler when it is set to "gaussian".
+
+    Example:
+
+    Initialize a VAE model with rotational invariance for
+    semisupervised learning of the dataset that has 10 classes
+    
+    >>> data_dim = (28, 28)
+    >>> ssvae = sstrVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
     """
     def __init__(self,
                  data_dim: Tuple[int],
@@ -63,8 +114,8 @@ class sstrVAE(nn.Module):
         self.coord = coord
         self.grid = generate_grid(data_dim).to(self.device)
         dx_pri = tt(kwargs.get("dx_prior", 0.1))
-        dy_pri = tt(kwargs.get("dy_prior", dx_pri))
-        t_prior = torch.stack([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
+        dy_pri = kwargs.get("dy_prior", dx_pri.clone())
+        t_prior = tt([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
         self.t_prior = t_prior.to(self.device)
         self.aux_loss_multiplier = aux_loss_multiplier
         self.to(self.device)
