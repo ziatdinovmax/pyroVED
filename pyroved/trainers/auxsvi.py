@@ -22,6 +22,18 @@ class auxSVItrainer:
             Pyro optimizer (Defaults to Adam with learning rate 5e-4)
         seed:
             Enforces reproducibility
+
+    Example:
+
+    >>> # Initialize model for semi supervised learning
+    >>> data_dim = (28, 28)
+    >>> ssvae = pyroved.models.ssVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
+    >>> # Initialize SVI trainer for models with auxiliary loss terms
+    >>> trainer = auxSVItrainer(ssvae)
+    >>> # Train for 200 epochs:
+    >>> for _ in range(200):
+    >>>     trainer.step(loader_unsuperv, loader_superv, loader_valid)
+    >>>     trainer.print_statistics()
     """
 
     def __init__(self,

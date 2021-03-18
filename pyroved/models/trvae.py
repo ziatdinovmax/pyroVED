@@ -57,7 +57,20 @@ class trVAE(nn.Module):
         kwargs:
             Additional keyword arguments are *dx_prior* and *dy_prior* for setting
             a translational prior(s), and *decoder_sig* for setting sigma
-            in the decoder's sampler when it is set to "gaussian".  
+            in the decoder's sampler when it is set to "gaussian".
+
+    Example:
+
+    Initialize a VAE model with rotational invariance
+    
+    >>> data_dim = (28, 28)
+    >>> ssvae = sstrVAE(data_dim, latent_dim=2, coord=1)
+
+    Initialize a class-conditioned VAE model with rotational invariance
+    for dataset that has 10 classes
+    
+    >>> data_dim = (28, 28)
+    >>> ssvae = sstrVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
     """
     def __init__(self,
                  data_dim: Tuple[int],

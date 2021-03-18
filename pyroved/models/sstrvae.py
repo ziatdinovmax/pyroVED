@@ -34,7 +34,7 @@ class sstrVAE(nn.Module):
             transaltional invariance.
         aux_loss_multiplier:
             Hyperparameter that modulates the importance of the auxiliary loss
-            term. See Eq. 9 in https://arxiv.org/abs/1406.5298.
+            term. See Eq. 9 in https://arxiv.org/abs/1406.5298. Default values is 20.
         hidden_dim_e:
             Number of hidden units per each layer in encoder (inference network).
         hidden_dim_d:
@@ -60,6 +60,14 @@ class sstrVAE(nn.Module):
             Additional keyword arguments are *dx_prior* and *dy_prior* for setting
             a translational prior(s), and *decoder_sig* for setting sigma
             in the decoder's sampler when it is set to "gaussian".
+
+    Example:
+
+    Initialize a VAE model with rotational invariance for
+    semisupervised learning of the dataset that has 10 classes
+    
+    >>> data_dim = (28, 28)
+    >>> ssvae = sstrVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
     """
     def __init__(self,
                  data_dim: Tuple[int],
