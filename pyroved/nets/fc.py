@@ -19,11 +19,17 @@ class Concat(nn.Module):
     Module for concatenation of tensors
     """
     def __init__(self, allow_broadcast: bool = True):
+        """
+        Initializes module
+        """
         self.allow_broadcast = allow_broadcast
         super().__init__()
 
     def forward(self, input_args: Union[List[torch.Tensor], torch.Tensor]
                 ) -> torch.Tensor:
+        """
+        Performs concatenation
+        """
         if torch.is_tensor(input_args):
             return input_args
         if self.allow_broadcast:
@@ -47,6 +53,9 @@ class fcEncoderNet(nn.Module):
                  softplus_out: bool = True,
                  flat: bool = True
                  ) -> None:
+        """
+        Initializes module
+        """
         super(fcEncoderNet, self).__init__()
         if len(in_dim) not in [1, 2, 3]:
             raise ValueError("in_dim must be (h, w), (h, w, c), or (l,)")
@@ -61,6 +70,9 @@ class fcEncoderNet(nn.Module):
         self.activation_out = nn.Softplus() if softplus_out else lambda x: x
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor]:
+        """
+        Forward pass
+        """
         x = self.concat(x)
         if self.flat:
             x = x.view(-1, self.in_dim)
@@ -84,6 +96,9 @@ class fcDecoderNet(nn.Module):
                  sigmoid_out: bool = True,
                  unflat: bool = True
                  ) -> None:
+        """
+        Initializes module
+        """
         super(fcDecoderNet, self).__init__()
         if len(out_dim) not in [1, 2, 3]:
             raise ValueError("in_dim must be (h, w), (h, w, c), or (l,)")
@@ -99,6 +114,9 @@ class fcDecoderNet(nn.Module):
         self.activation_out = nn.Sigmoid() if sigmoid_out else lambda x: x
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass
+        """
         z = self.concat(z)
         x = self.fc_layers(z)
         x = self.activation_out(self.out(x))
@@ -121,6 +139,9 @@ class sDecoderNet(nn.Module):
                  sigmoid_out: bool = True,
                  unflat: bool = True
                  ) -> None:
+        """
+        Initializes module
+        """
         super(sDecoderNet, self).__init__()
         if len(out_dim) not in [1, 2, 3]:
             raise ValueError("in_dim must be (h, w), (h, w, c), or (l,)")
@@ -138,6 +159,9 @@ class sDecoderNet(nn.Module):
         self.activation_out = nn.Sigmoid() if sigmoid_out else lambda x: x
 
     def forward(self, x_coord: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass
+        """
         z = self.concat(z)
         x = self.coord_latent(x_coord, z)
         x = self.fc_layers(x)
@@ -157,6 +181,9 @@ class coord_latent(nn.Module):
                  out_dim: int,
                  ndim: int = 2,
                  activation_out: bool = True) -> None:
+        """
+        Initializes module
+        """
         super(coord_latent, self).__init__()
         self.fc_coord = nn.Linear(ndim, out_dim)
         self.fc_latent = nn.Linear(latent_dim, out_dim, bias=False)
@@ -190,6 +217,9 @@ class fcClassifierNet(nn.Module):
                  num_layers: int = 2,
                  activation: str = 'tanh'
                  ) -> None:
+        """
+        Initializes module
+        """
         super(fcClassifierNet, self).__init__()
         if len(in_dim) not in [1, 2, 3]:
             raise ValueError("in_dim must be (h, w), (h, w, c), or (l,)")
@@ -200,6 +230,9 @@ class fcClassifierNet(nn.Module):
         self.out = nn.Linear(hidden_dim, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass
+        """
         x = self.fc_layers(x)
         x = self.out(x)
         return torch.softmax(x, dim=-1)
@@ -224,6 +257,9 @@ def make_fc_layers(in_dim: int,
 
 
 def get_activation(activation: int) -> Type[nn.Module]:
+    """
+    Returns specified activation
+    """
     if activation is None:
         return
     activations = {"lrelu": nn.LeakyReLU, "tanh": nn.Tanh,
