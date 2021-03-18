@@ -15,8 +15,7 @@ from ..utils import (generate_grid, get_sampler, plot_img_grid,
 
 class trVAE(nn.Module):
     """
-    Variational autoencoder that enforces rotational
-    and/or translational invariances
+    Variational autoencoder that enforces rotational and/or translational invariances
 
     Args:
         data_dim:
@@ -62,13 +61,13 @@ class trVAE(nn.Module):
     Example:
 
     Initialize a VAE model with rotational invariance
-    
+
     >>> data_dim = (28, 28)
     >>> ssvae = trVAE(data_dim, latent_dim=2, coord=1)
 
     Initialize a class-conditioned VAE model with rotational invariance
     for dataset that has 10 classes
-    
+
     >>> data_dim = (28, 28)
     >>> ssvae = trVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
     """
@@ -88,7 +87,7 @@ class trVAE(nn.Module):
                  **kwargs: float
                  ) -> None:
         """
-        Initializes rVAE's modules and parameters
+        Initializes trVAE's modules and parameters
         """
         super(trVAE, self).__init__()
         pyro.clear_param_store()
@@ -275,8 +274,8 @@ class trVAE(nn.Module):
         grid_x = norm.ppf(torch.linspace(0.95, 0.05, d))
         grid_y = norm.ppf(torch.linspace(0.05, 0.95, d))
         loc_all = []
-        for i, xi in enumerate(grid_x):
-            for j, yi in enumerate(grid_y):
+        for xi in grid_x:
+            for yi in grid_y:
                 z = tt([xi, yi]).float().to(self.device).unsqueeze(0)
                 if self.num_classes > 0:
                     z = torch.cat([z, cls], dim=-1)

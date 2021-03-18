@@ -15,8 +15,7 @@ from ..utils import (generate_grid, get_sampler, plot_img_grid,
 
 class sstrVAE(nn.Module):
     """
-    Semi-supervised variational autoencoder (VAE) with rotational
-    and/or translational invariance
+    Semi-supervised variational autoencoder with rotational and/or translational invariance
 
     Args:
         data_dim:
@@ -65,7 +64,7 @@ class sstrVAE(nn.Module):
 
     Initialize a VAE model with rotational invariance for
     semisupervised learning of the dataset that has 10 classes
-    
+
     >>> data_dim = (28, 28)
     >>> ssvae = sstrVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
     """
@@ -248,7 +247,7 @@ class sstrVAE(nn.Module):
                    x_new: torch.Tensor,
                    **kwargs: int) -> torch.Tensor:
         """
-        Classifies images
+        Classifies data
         """
         def classify() -> torch.Tensor:
             with torch.no_grad():
@@ -342,8 +341,8 @@ class sstrVAE(nn.Module):
         grid_x = norm.ppf(torch.linspace(0.95, 0.05, d))
         grid_y = norm.ppf(torch.linspace(0.05, 0.95, d))
         loc_all = []
-        for i, xi in enumerate(grid_x):
-            for j, yi in enumerate(grid_y):
+        for xi in grid_x:
+            for yi in grid_y:
                 z_sample = tt([xi, yi]).float().to(self.device).unsqueeze(0)
                 z_sample = torch.cat([z_sample, cls], dim=-1)
                 d_args = (self.grid.unsqueeze(0), z_sample) if self.coord > 0 else (z_sample,)

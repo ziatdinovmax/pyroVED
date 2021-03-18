@@ -2,17 +2,17 @@ from typing import Union, List
 import torch
 from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
-        
+
 
 def plot_img_grid(imgdata: torch.Tensor, d: int,
                   **kwargs: Union[str, int, List[float]]) -> None:
     """
     Plots a square grid of images
-    """    
+    """
     grid = make_grid(imgdata[:, None], nrow=d,
                      padding=kwargs.get("padding", 2),
                      pad_value=kwargs.get("pad_value", 0))
-    
+
     plt.figure(figsize=(8, 8))
     plt.imshow(grid[0], cmap=kwargs.get("cmap", "gnuplot"),
                origin=kwargs.get("origin", "upper"),
