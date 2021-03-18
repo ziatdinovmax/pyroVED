@@ -114,8 +114,8 @@ class sstrVAE(nn.Module):
         self.coord = coord
         self.grid = generate_grid(data_dim).to(self.device)
         dx_pri = tt(kwargs.get("dx_prior", 0.1))
-        dy_pri = tt(kwargs.get("dy_prior", dx_pri))
-        t_prior = torch.stack([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
+        dy_pri = kwargs.get("dy_prior", dx_pri.clone())
+        t_prior = tt([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
         self.t_prior = t_prior.to(self.device)
         self.aux_loss_multiplier = aux_loss_multiplier
         self.to(self.device)
