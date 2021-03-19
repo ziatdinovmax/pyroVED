@@ -322,10 +322,9 @@ class sstrVAE(nn.Module):
         Decodes a batch of latent coordnates
         """
         z = torch.cat([z.to(self.device), y.to(self.device)], -1)
-        z = [z]
+        z = (z,)
         if self.coord > 0:
-            grid = self.grid.expand(z[0].shape[0], *self.grid.shape)
-            z = z.append(grid.to(self.device))
+            z = (self.grid.expand(z[0].shape[0], *self.grid.shape),) + z
         with torch.no_grad():
             loc = self.decoder_net(*z)
         return loc.view(-1, *self.data_dim)
