@@ -142,7 +142,7 @@ class jtrVAE(nn.Module):
                 grid = self.grid.expand(bdim*self.discrete_dim, *self.grid.shape)
                 x_coord_prime = transform_coordinates(grid, phi, dx)
             # Continuous and discrete latent variables for the decoder
-            z = [z, z_disc.reshape(-1, self.discrete_dim)]
+            z = [z, z_disc.reshape(-1, self.discrete_dim) if self.coord > 0 else z_disc]
             # decode the latent code z together with the transformed coordinates (if any)
             dec_args = (x_coord_prime, z) if self.coord else (z,)
             loc = self.decoder_net(*dec_args)
