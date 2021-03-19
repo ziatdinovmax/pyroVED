@@ -215,7 +215,7 @@ class jtrVAE(nn.Module):
         """
         Plots a learned latent manifold in the image space
         """
-        cls = to_onehot(disc_idx.unsqueeze(0), self.num_classes)
+        cls = to_onehot(tt(disc_idx).unsqueeze(0), self.discrete_dim)
         grid_x = dist.Normal(0, 1).icdf(torch.linspace(0.95, 0.05, d))
         grid_y = dist.Normal(0, 1).icdf(torch.linspace(0.05, 0.95, d))
         loc_all = []
