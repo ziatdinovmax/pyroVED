@@ -12,7 +12,7 @@ from ..utils import (generate_grid, get_sampler, plot_img_grid,
                      transform_coordinates, to_onehot)
 
 
-class jrVAE(nn.Module):
+class jtrVAE(nn.Module):
 
     def __init__(self,
                  data_dim: Tuple[int],
@@ -32,7 +32,7 @@ class jrVAE(nn.Module):
         """
         Initializes trVAE's modules and parameters
         """
-        super(jrVAE, self).__init__()
+        super(jtrVAE, self).__init__()
         pyro.clear_param_store()
         set_deterministic_mode(seed)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
