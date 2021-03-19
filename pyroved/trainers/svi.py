@@ -57,17 +57,14 @@ class SVItrainer:
             lr = kwargs.get("lr", 1e-3)
             optimizer = optim.Adam({"lr": lr})
         if loss is None:
-            loss = infer.TraceEnum_ELBO
             if enumerate_parallel:
-                loss = loss(max_plate_nesting=1,
-                            strict_enumeration_warning=False)
+                loss = infer.TraceEnum_ELBO(
+                    max_plate_nesting=1, strict_enumeration_warning=False)
             else:
-                loss = loss()
+                loss = infer.Trace_ELBO()
+        guide = model.guide
         if enumerate_parallel:
-            guide = infer.config_enumerate(
-                model.guide, "parallel", expand=True)
-        else:
-            guide = model.guide
+            guide = infer.config_enumerate(guide, "parallel", expand=True)   
         self.svi = infer.SVI(model.model, guide, optimizer, loss=loss)
         self.loss_history = {"training_loss": [], "test_loss": []}
         self.current_epoch = 0
