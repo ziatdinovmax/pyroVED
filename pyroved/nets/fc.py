@@ -100,7 +100,7 @@ class jfcEncoderNet(nn.Module):
         """
         Initializes module
         """
-        super(fcEncoderNet, self).__init__()
+        super(jfcEncoderNet, self).__init__()
         if len(in_dim) not in [1, 2, 3]:
             raise ValueError("in_dim must be (h, w), (h, w, c), or (l,)")
         self.in_dim = torch.prod(tt(in_dim)).item()
