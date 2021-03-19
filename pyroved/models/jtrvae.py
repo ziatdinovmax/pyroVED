@@ -253,7 +253,7 @@ class jtrVAE(nn.Module):
             z = torch.cat([z.to(self.device), y.to(self.device)], -1)
         z = [z]
         if self.coord > 0:
-            grid = self.grid.expand(z.shape[0], *self.grid.shape)
+            grid = self.grid.expand(z[0].shape[0], *self.grid.shape)
             z = z.append(grid.to(self.device))
         with torch.no_grad():
             loc = self.decoder_net(*z)
