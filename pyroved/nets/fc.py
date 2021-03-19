@@ -78,8 +78,54 @@ class fcEncoderNet(nn.Module):
             x = x.view(-1, self.in_dim)
         x = self.fc_layers(x)
         mu = self.fc11(x)
-        log_sigma = self.activation_out(self.fc12(x))
-        return mu, log_sigma
+        sigma = self.activation_out(self.fc12(x))
+        return mu, sigma
+
+
+class jfcEncoderNet(nn.Module):
+    """
+    A standard (fully-connected) encoder for joint VAE.
+    The encoder outputs mean, standard evidation and class probabilities.
+    """
+    def __init__(self,
+                 in_dim: Tuple[int],
+                 latent_dim: int = 2,
+                 discrete_dim: int = 0,
+                 hidden_dim: int = 128,
+                 num_layers: int = 2,
+                 activation: str = 'tanh',
+                 softplus_out: bool = True,
+                 flat: bool = True
+                 ) -> None:
+        """
+        Initializes module
+        """
+        super(fcEncoderNet, self).__init__()
+        if len(in_dim) not in [1, 2, 3]:
+            raise ValueError("in_dim must be (h, w), (h, w, c), or (l,)")
+        self.in_dim = torch.prod(tt(in_dim)).item()
+        self.flat = flat
+
+        self.concat = Concat()
+        self.fc_layers = make_fc_layers(
+            self.in_dim, hidden_dim, num_layers, activation)
+        self.fc11 = nn.Linear(hidden_dim, latent_dim)
+        self.fc12 = nn.Linear(hidden_dim, latent_dim)
+        self.fc13 = nn.Linear(hidden_dim, discrete_dim)
+        self.activation_out = nn.Softplus() if softplus_out else lambda x: x
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor]:
+        """
+        Forward pass
+        """
+        x = self.concat(x)
+        if self.flat:
+            x = x.view(-1, self.in_dim)
+        x = self.fc_layers(x)
+        mu = self.fc11(x)
+        sigma = self.activation_out(self.fc12(x))
+        alpha = torch.softmax(self.fc13(x), dim=-1)
+        return mu, sigma, alpha
 
 
 class fcDecoderNet(nn.Module):

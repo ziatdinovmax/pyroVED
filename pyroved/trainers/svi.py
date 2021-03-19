@@ -41,7 +41,9 @@ class SVItrainer:
                  model: Type[torch.nn.Module],
                  optimizer: Type[optim.PyroOptim] = None,
                  loss: Type[infer.ELBO] = None,
-                 seed: int = 1
+                 enumerate_parallel: bool = False,
+                 seed: int = 1,
+                 **kwargs: float
                  ) -> None:
         """
         Initializes the trainer's parameters
@@ -50,10 +52,21 @@ class SVItrainer:
         set_deterministic_mode(seed)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if optimizer is None:
-            optimizer = optim.Adam({"lr": 1.0e-3})
+            lr = kwargs.get("lr", 1e-3)
+            optimizer = optim.Adam({"lr": lr})
         if loss is None:
-            loss = infer.Trace_ELBO()
-        self.svi = infer.SVI(model.model, model.guide, optimizer, loss=loss)
+            loss = infer.TraceEnum_ELBO
+            if enumerate_parallel:
+                loss = loss(max_plate_nesting=1,
+                            strict_enumeration_warning=False)
+            else:
+                loss = loss()
+        if enumerate_parallel:
+            guide = infer.config_enumerate(
+                model.guide, "parallel", expand=True)
+        else:
+            guide = model.guide
+        self.svi = infer.SVI(model.model, guide, optimizer, loss=loss)
         self.loss_history = {"training_loss": [], "test_loss": []}
         self.current_epoch = 0
 
