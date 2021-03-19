@@ -22,6 +22,8 @@ class SVItrainer:
             Pyro optimizer (Defaults to Adam with learning rate 1e-3)
         loss:
             ELBO objective (Defaults to pyro.infer.Trace_ELBO)
+        enumerate_parallel:
+            Exact discrete enumeration for discrete latent variables
         seed:
             Enforces reproducibility
 
