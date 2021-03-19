@@ -90,7 +90,7 @@ class jtrVAE(nn.Module):
                 if torch.sum(dx) != 0:
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
-                grid = self.grid.expand(bdim, *self.grid.shape)
+                grid = self.grid.expand(bdim*self.discrete_dim, *self.grid.shape)
                 x_coord_prime = transform_coordinates(grid, phi, dx)
             # Continuous and discrete latent variables for the decoder
             z = [z, z_disc.reshape(-1, self.discrete_dim)]
