@@ -6,30 +6,28 @@ import torch
 import torch.nn as nn
 import torch.tensor as tt
 
-from ..nets import fcDecoderNet, fcEncoderNet, sDecoderNet
+from ..nets import fcDecoderNet, jfcEncoderNet, sDecoderNet
 from ..utils import (generate_grid, get_sampler, plot_img_grid,
-                     plot_spect_grid, set_deterministic_mode, to_onehot,
-                     transform_coordinates)
+                     plot_spect_grid, set_deterministic_mode,
+                     transform_coordinates, to_onehot)
 
 
-class trVAE(nn.Module):
+class jtrVAE(nn.Module):
     """
-    Variational autoencoder that enforces rotational and/or translational invariances
-
     Args:
         data_dim:
             Dimensionality of the input data; use (h x w) for images
             or (length,) for spectra.
         latent_dim:
-            Number of latent dimensions.
+            Number of continuous latent dimensions.
+        discrete_dim:
+            Number of discrete latent dimensions
         coord:
             For 2D systems, *coord=0* is vanilla VAE, *coord=1* enforces
             rotational invariance, *coord=2* enforces invariance to translations,
             and *coord=3* enforces both rotational and translational invariances.
             For 1D systems, *coord=0* is vanilla VAE and *coord>0* enforces
             transaltional invariance.
-        num_classes:
-            Number of classes (if any) for class-conditioned (t)(r)VAE.
         hidden_dim_e:
             Number of hidden units per each layer in encoder (inference network).
         hidden_dim_d:
@@ -59,22 +57,17 @@ class trVAE(nn.Module):
 
     Example:
 
-    Initialize a VAE model with rotational invariance
+    Initialize a joint VAE model with rotational invariance for 10 discrete classes
 
     >>> data_dim = (28, 28)
-    >>> ssvae = trVAE(data_dim, latent_dim=2, coord=1)
-
-    Initialize a class-conditioned VAE model with rotational invariance
-    for dataset that has 10 classes
-
-    >>> data_dim = (28, 28)
-    >>> ssvae = trVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
+    >>> ssvae = jtrVAE(data_dim, latent_dim=2, discrete_dim=10, coord=1)
     """
+
     def __init__(self,
                  data_dim: Tuple[int],
-                 latent_dim: int = 2,
-                 coord: int = 3,
-                 num_classes: int = 0,
+                 latent_dim: int,
+                 discrete_dim: int,
+                 coord: int = 0,
                  hidden_dim_e: int = 128,
                  hidden_dim_d: int = 128,
                  num_layers_e: int = 2,
@@ -88,26 +81,27 @@ class trVAE(nn.Module):
         """
         Initializes trVAE's modules and parameters
         """
-        super(trVAE, self).__init__()
+        super(jtrVAE, self).__init__()
         pyro.clear_param_store()
         set_deterministic_mode(seed)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.ndim = len(data_dim)
+        self.data_dim = data_dim
         if self.ndim == 1 and coord > 0:
             coord = 1
-        self.encoder_net = fcEncoderNet(
-            data_dim, latent_dim+coord, 0, hidden_dim_e,
+        self.encoder_net = jfcEncoderNet(
+            data_dim, latent_dim+coord, discrete_dim, hidden_dim_e,
             num_layers_e, activation, softplus_out=True)
         if coord not in [0, 1, 2, 3]:
             raise ValueError("'coord' argument must be 0, 1, 2 or 3")
         dnet = sDecoderNet if coord in [1, 2, 3] else fcDecoderNet
         self.decoder_net = dnet(
-            data_dim, latent_dim, num_classes, hidden_dim_d,
-            num_layers_d, activation, sigmoid_out=sigmoid_d)
+            data_dim, latent_dim, discrete_dim, hidden_dim_d,
+            num_layers_d, activation, sigmoid_out=sigmoid_d, unflat=False)
         self.sampler_d = get_sampler(sampler_d, **kwargs)
         self.z_dim = latent_dim + coord
         self.coord = coord
-        self.num_classes = num_classes
+        self.discrete_dim = discrete_dim
         self.grid = generate_grid(data_dim).to(self.device)
         dx_pri = tt(kwargs.get("dx_prior", 0.1))
         dy_pri = kwargs.get("dy_prior", dx_pri.clone())
@@ -120,39 +114,42 @@ class trVAE(nn.Module):
               y: Optional[torch.Tensor] = None,
               **kwargs: float) -> torch.Tensor:
         """
-        Defines the model p(x|z)p(z)
+        Defines the model p(x|z,c)p(z)p(c)
         """
         # register PyTorch module `decoder_net` with Pyro
         pyro.module("decoder_net", self.decoder_net)
         # KLD scale factor (see e.g. https://openreview.net/pdf?id=Sy2fzU9gl)
         beta = kwargs.get("scale_factor", 1.)
         reshape_ = torch.prod(tt(x.shape[1:])).item()
-        with pyro.plate("data", x.shape[0]):
-            # setup hyperparameters for prior p(z)
-            z_loc = x.new_zeros(torch.Size((x.shape[0], self.z_dim)))
-            z_scale = x.new_ones(torch.Size((x.shape[0], self.z_dim)))
-            # sample from prior (value will be sampled by guide when computing the ELBO)
+        bdim = x.shape[0]
+        with pyro.plate("data"):
+            # sample the continuous latent vector from the constant prior distribution
+            z_loc = x.new_zeros(torch.Size((bdim, self.z_dim)))
+            z_scale = x.new_ones(torch.Size((bdim, self.z_dim)))
+            # sample discrete latent vector from the constant prior
+            alpha = x.new_ones(torch.Size((bdim, self.discrete_dim))) / self.discrete_dim
+            # sample from prior (value will be sampled by guide when computing ELBO)
             with pyro.poutine.scale(scale=beta):
-                z = pyro.sample("latent", dist.Normal(z_loc, z_scale).to_event(1))
-            if self.coord > 0:  # rotationally- and/or translationaly-invariant mode
-                # Split latent variable into parts for rotation
-                # and/or translation and image content
-                phi, dx, z = self.split_latent(z)
+                z = pyro.sample("latent_cont", dist.Normal(z_loc, z_scale).to_event(1))
+                z_disc = pyro.sample("latent_disc", dist.OneHotCategorical(alpha))
+            # split latent variable into parts for rotation and/or translation
+            # and image content
+            if self.coord > 0:
+                phi, dx, z = self.split_latent(z.repeat(self.discrete_dim, 1))
                 if torch.sum(dx) != 0:
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
-                grid = self.grid.expand(x.shape[0], *self.grid.shape)
+                grid = self.grid.expand(bdim*self.discrete_dim, *self.grid.shape)
                 x_coord_prime = transform_coordinates(grid, phi, dx)
-            # Add class label (if any)
-            if y is not None:
-                y = to_onehot(y, self.num_classes)
-                z = torch.cat([z, y], dim=-1)
+            # Continuous and discrete latent variables for the decoder
+            z = [z, z_disc.reshape(-1, self.discrete_dim) if self.coord > 0 else z_disc]
             # decode the latent code z together with the transformed coordinates (if any)
             dec_args = (x_coord_prime, z) if self.coord else (z,)
             loc = self.decoder_net(*dec_args)
-            # score against actual images ("binary cross-entropy loss")
+            # score against actual images/spectra
+            loc = loc.view(*z_disc.shape[:-1], reshape_)
             pyro.sample(
-                "obs", self.sampler_d(loc.view(-1, reshape_)).to_event(1),
+                "obs", self.sampler_d(loc).to_event(1),
                 obs=x.view(-1, reshape_))
 
     def guide(self,
@@ -160,44 +157,44 @@ class trVAE(nn.Module):
               y: Optional[torch.Tensor] = None,
               **kwargs: float) -> torch.Tensor:
         """
-        Defines the guide q(z|x)
+        Defines the guide q(z,c|x)
         """
         # register PyTorch module `encoder_net` with Pyro
         pyro.module("encoder_net", self.encoder_net)
         # KLD scale factor (see e.g. https://openreview.net/pdf?id=Sy2fzU9gl)
         beta = kwargs.get("scale_factor", 1.)
-        with pyro.plate("data", x.shape[0]):
-            # use the encoder to get the parameters used to define q(z|x)
-            z_loc, z_scale = self.encoder_net(x)
+        with pyro.plate("data"):
+            # use the encoder to get the parameters used to define q(z,c|x)
+            z_loc, z_scale, alpha = self.encoder_net(x)
             # sample the latent code z
             with pyro.poutine.scale(scale=beta):
-                pyro.sample("latent", dist.Normal(z_loc, z_scale).to_event(1))
+                pyro.sample("latent_cont", dist.Normal(z_loc, z_scale).to_event(1))
+                pyro.sample("latent_disc", dist.OneHotCategorical(alpha))
 
-    def split_latent(self, z: torch.Tensor) -> Tuple[torch.Tensor]:
+    def split_latent(self, zs: torch.Tensor) -> Tuple[torch.Tensor]:
         """
-        Split latent variable into parts for rotation
-        and/or translation and image content
+        Split latent variable into parts with rotation and/or translation
+        and image content
         """
-        # For 1D, there is only a translation
         if self.ndim == 1:
-            dx = z[:, 0:1]
-            z = z[:, 1:]
-            return None, dx, z
+            dx = zs[:, 0:1]
+            zs = zs[:, 1:]
+            return None, dx, zs
         phi, dx = tt(0), tt(0)
         # rotation + translation
         if self.coord == 3:
-            phi = z[:, 0]  # encoded angle
-            dx = z[:, 1:3]  # translation
-            z = z[:, 3:]  # image content
+            phi = zs[:, 0]  # encoded angle
+            dx = zs[:, 1:3]  # translation
+            zs = zs[:, 3:]  # image content
         # translation only
         elif self.coord == 2:
-            dx = z[:, :2]
-            z = z[:, 2:]
+            dx = zs[:, :2]
+            zs = zs[:, 2:]
         # rotation only
         elif self.coord == 1:
-            phi = z[:, 0]
-            z = z[:, 1:]
-        return phi, dx, z
+            phi = zs[:, 0]
+            zs = zs[:, 1:]
+        return phi, dx, zs
 
     def set_encoder(self, encoder_net: Type[torch.nn.Module]) -> None:
         """
@@ -239,14 +236,14 @@ class trVAE(nn.Module):
     def encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
         Encodes data using a trained inference (encoder) network
-        (this is baiscally a wrapper for self._encode)
         """
         if isinstance(x_new, torch.utils.data.DataLoader):
             x_new = x_new.dataset.tensors[0]
         z = self._encode(x_new)
         z_loc = z[:, :self.z_dim]
-        z_scale = z[:, self.z_dim:]
-        return z_loc, z_scale
+        z_scale = z[:, self.z_dim:2*self.z_dim]
+        alphas = z[:, 2*self.z_dim:]
+        return z_loc, z_scale, alphas
 
     def decode(self, z: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
         """
@@ -262,26 +259,24 @@ class trVAE(nn.Module):
             loc = self.decoder_net(*z)
         return loc
 
-    def manifold2d(self, d: int, plot: bool = True,
+    def manifold2d(self, d: int, disc_idx: int = 0, plot: bool = True,
                    **kwargs: Union[str, int]) -> torch.Tensor:
         """
         Plots a learned latent manifold in the image space
         """
-        if self.num_classes > 0:
-            cls = tt(kwargs.get("label", 0))
-            cls = to_onehot(cls.unsqueeze(0), self.num_classes)
+        cls = to_onehot(tt(disc_idx).unsqueeze(0), self.discrete_dim)
         grid_x = dist.Normal(0, 1).icdf(torch.linspace(0.95, 0.05, d))
         grid_y = dist.Normal(0, 1).icdf(torch.linspace(0.05, 0.95, d))
         loc_all = []
         for xi in grid_x:
             for yi in grid_y:
                 z = tt([xi, yi]).float().to(self.device).unsqueeze(0)
-                if self.num_classes > 0:
-                    z = torch.cat([z, cls], dim=-1)
+                z = torch.cat([z, cls], dim=-1)
                 d_args = (self.grid.unsqueeze(0), z) if self.coord > 0 else (z,)
                 loc = self.decoder_net(*d_args)
                 loc_all.append(loc.detach().cpu())
         loc_all = torch.cat(loc_all)
+        loc_all = loc_all.view(-1, *self.data_dim)
         if plot:
             if self.ndim == 2:
                 plot_img_grid(
