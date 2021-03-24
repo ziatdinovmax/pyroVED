@@ -14,6 +14,10 @@ from ..utils import (generate_grid, get_sampler, plot_img_grid,
 
 class jtrVAE(nn.Module):
     """
+    Variational autoencoder for learning (jointly) discrete and
+    continuous latent representations on data with arbitrary rotations
+    and/or translations
+
     Args:
         data_dim:
             Dimensionality of the input data; use (h x w) for images
