@@ -127,7 +127,6 @@ def test_sstrvae_cont_sites_dims(data_dim, coord):
         coord = coord if len(data_dim[1:]) > 1 else 1
     model = models.sstrVAE(data_dim[1:], 2, 3, coord=coord)
     guide_trace, model_trace = get_enum_traces(model, x)
-    print(model_trace.nodes["z"]['value'].shape)
     assert_equal(model_trace.nodes["z"]['value'].shape,
                  (3, data_dim[0], coord+2))
     assert_equal(guide_trace.nodes["z"]['value'].shape,
@@ -183,7 +182,7 @@ def test_trvae_decoder_sampler(sampler, expected_dist):
     data_dim = (2, 8, 8)
     x = torch.randn(*data_dim)
     model = models.trVAE(data_dim[1:], coord=1, sampler_d=sampler)
-    guide_trace, model_trace = get_traces(model, x)
+    _, model_trace = get_traces(model, x)
     assert_(isinstance(model_trace.nodes["obs"]['fn'].base_dist, expected_dist))
 
 
@@ -195,7 +194,7 @@ def test_jtrvae_decoder_sampler(sampler, expected_dist):
     data_dim = (2, 8, 8)
     x = torch.randn(*data_dim)
     model = models.jtrVAE(data_dim[1:], 2, 3, coord=1, sampler_d=sampler)
-    guide_trace, model_trace = get_enum_traces(model, x)
+    _, model_trace = get_enum_traces(model, x)
     assert_(isinstance(model_trace.nodes["obs"]['fn'].base_dist, expected_dist))
 
 
@@ -207,7 +206,7 @@ def test_sstrvae_decoder_sampler(sampler, expected_dist):
     data_dim = (2, 64)
     x = torch.randn(*data_dim)
     model = models.sstrVAE(data_dim[1:], 2, 3, coord=1, sampler_d=sampler)
-    guide_trace, model_trace = get_enum_traces(model, x)
+    _, model_trace = get_enum_traces(model, x)
     assert_(isinstance(model_trace.nodes["x"]['fn'].base_dist, expected_dist))
 
 
