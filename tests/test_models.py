@@ -12,7 +12,7 @@ from numpy.testing import assert_equal, assert_
 
 sys.path.append("../../")
 
-from pyroved import models
+from pyroved import models, utils
 
 
 def get_traces(model, x):
@@ -36,7 +36,7 @@ def get_enum_traces(model, x):
 
 
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
-@pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8)])
+@pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8), (3, 64)])
 def test_trvae_sites_dims(data_dim, coord):
     x = torch.randn(*data_dim)
     if coord > 0:
@@ -52,7 +52,7 @@ def test_trvae_sites_dims(data_dim, coord):
 
 
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
-@pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8)])
+@pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8), (3, 64)])
 def test_trvae_sites_fn(data_dim, coord):
     x = torch.randn(*data_dim)
     if coord > 0:
@@ -117,3 +117,170 @@ def test_jtrvae_disc_sites_fn(data_dim, coord):
     guide_trace, model_trace = get_enum_traces(model, x)
     assert_(isinstance(model_trace.nodes["latent_disc"]['fn'], dist.OneHotCategorical))
     assert_(isinstance(guide_trace.nodes["latent_disc"]['fn'], dist.OneHotCategorical))
+
+
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8)])
+def test_sstrvae_cont_sites_dims(data_dim, coord):
+    x = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
+    if coord > 0:
+        coord = coord if len(data_dim[1:]) > 1 else 1
+    model = models.sstrVAE(data_dim[1:], 2, 3, coord=coord)
+    guide_trace, model_trace = get_enum_traces(model, x)
+    print(model_trace.nodes["z"]['value'].shape)
+    assert_equal(model_trace.nodes["z"]['value'].shape,
+                 (3, data_dim[0], coord+2))
+    assert_equal(guide_trace.nodes["z"]['value'].shape,
+                 (3, data_dim[0], coord+2))
+    assert_equal(model_trace.nodes["x"]['value'].shape,
+                 (data_dim[0], torch.prod(tt(data_dim[1:])).item()))
+
+
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8)])
+def test_jtrvae_disc_sites_dims(data_dim, coord):
+    x = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
+    if coord > 0:
+        coord = coord if len(data_dim[1:]) > 1 else 1
+    model = models.sstrVAE(data_dim[1:], 2, 3, coord=coord)
+    guide_trace, model_trace = get_enum_traces(model, x)
+    assert_equal(model_trace.nodes["y"]['value'].shape,
+                 (3, data_dim[0], 3))
+    assert_equal(guide_trace.nodes["y"]['value'].shape,
+                 (3, data_dim[0], 3))
+
+
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8)])
+def test_jtrvae_cont_sites_fn(data_dim, coord):
+    x = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
+    if coord > 0:
+        coord = coord if len(data_dim[1:]) > 1 else 1
+    model = models.sstrVAE(data_dim[1:], 2, 3, coord=coord)
+    guide_trace, model_trace = get_enum_traces(model, x)
+    assert_(isinstance(model_trace.nodes["z"]['fn'].base_dist, dist.Normal))
+    assert_(isinstance(guide_trace.nodes["z"]['fn'].base_dist, dist.Normal))
+    assert_(isinstance(model_trace.nodes["x"]['fn'].base_dist, dist.Bernoulli))
+
+
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8)])
+def test_sstrvae_disc_sites_fn(data_dim, coord):
+    x = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
+    if coord > 0:
+        coord = coord if len(data_dim[1:]) > 1 else 1
+    model = models.sstrVAE(data_dim[1:], 2, 3, coord=coord)
+    guide_trace, model_trace = get_enum_traces(model, x)
+    assert_(isinstance(model_trace.nodes["y"]['fn'], dist.OneHotCategorical))
+    assert_(isinstance(guide_trace.nodes["y"]['fn'], dist.OneHotCategorical))
+
+
+@pytest.mark.parametrize(
+    "sampler, expected_dist",
+    [("gaussian", dist.Normal), ("bernoulli", dist.Bernoulli),
+     ("continuous_bernoulli", dist.ContinuousBernoulli)])
+def test_trvae_decoder_sampler(sampler, expected_dist):
+    data_dim = (2, 8, 8)
+    x = torch.randn(*data_dim)
+    model = models.trVAE(data_dim[1:], coord=1, sampler_d=sampler)
+    guide_trace, model_trace = get_traces(model, x)
+    assert_(isinstance(model_trace.nodes["obs"]['fn'].base_dist, expected_dist))
+
+
+@pytest.mark.parametrize(
+    "sampler, expected_dist",
+    [("gaussian", dist.Normal), ("bernoulli", dist.Bernoulli),
+     ("continuous_bernoulli", dist.ContinuousBernoulli)])
+def test_jtrvae_decoder_sampler(sampler, expected_dist):
+    data_dim = (2, 8, 8)
+    x = torch.randn(*data_dim)
+    model = models.jtrVAE(data_dim[1:], 2, 3, coord=1, sampler_d=sampler)
+    guide_trace, model_trace = get_enum_traces(model, x)
+    assert_(isinstance(model_trace.nodes["obs"]['fn'].base_dist, expected_dist))
+
+
+@pytest.mark.parametrize(
+    "sampler, expected_dist",
+    [("gaussian", dist.Normal), ("bernoulli", dist.Bernoulli),
+     ("continuous_bernoulli", dist.ContinuousBernoulli)])
+def test_sstrvae_decoder_sampler(sampler, expected_dist):
+    data_dim = (2, 64)
+    x = torch.randn(*data_dim)
+    model = models.sstrVAE(data_dim[1:], 2, 3, coord=1, sampler_d=sampler)
+    guide_trace, model_trace = get_enum_traces(model, x)
+    assert_(isinstance(model_trace.nodes["x"]['fn'].base_dist, expected_dist))
+
+
+@pytest.mark.parametrize("vae_model", [models.jtrVAE, models.sstrVAE])
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(8,), (8, 8), (8,), (8, 8)])
+def test_jtrvae_decode(vae_model, data_dim, coord):
+    if coord > 0:
+        coord = coord if len(data_dim[1:]) > 1 else 1
+    model = vae_model(data_dim, 2, 3, coord=coord)
+    z_coord = torch.tensor([0.0, 0.0]).unsqueeze(0)
+    y = utils.to_onehot(torch.tensor(0).unsqueeze(0), 3)
+    decoded = model.decode(z_coord, y)
+    assert_equal(decoded.squeeze().shape, data_dim)
+
+
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(8,), (8, 8)])
+def test_trvae_decode(data_dim, coord):
+    if coord > 0:
+        coord = coord if len(data_dim[1:]) > 1 else 1
+    model = models.trVAE(data_dim, coord=coord)
+    z_coord = torch.tensor([0.0, 0.0]).unsqueeze(0)
+    decoded = model.decode(z_coord)
+    assert_equal(decoded.squeeze().shape, data_dim)
+
+
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(8,), (8, 8)])
+def test_ctrvae_decode(data_dim, coord):
+    if coord > 0:
+        coord = coord if len(data_dim[1:]) > 1 else 1
+    model = models.trVAE(data_dim, num_classes=3, coord=coord)
+    z_coord = torch.tensor([0.0, 0.0]).unsqueeze(0)
+    y = utils.to_onehot(torch.tensor(0).unsqueeze(0), 3)
+    decoded = model.decode(z_coord, y)
+    assert_equal(decoded.squeeze().shape, data_dim)
+
+
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8)])
+def test_trvae_encode(data_dim, coord):
+    x = torch.randn(*data_dim)
+    if coord > 0:
+        coord = coord if len(data_dim[1:]) > 1 else 1
+    model = models.trVAE(data_dim[1:], 2, coord=coord)
+    encoded = model.encode(x)
+    assert_equal(encoded[0].shape, (data_dim[0], coord+2))
+    assert_equal(encoded[0].shape, encoded[1].shape)
+
+
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8)])
+def test_jtrvae_encode(data_dim, coord):
+    x = torch.randn(*data_dim)
+    if coord > 0:
+        coord = coord if len(data_dim[1:]) > 1 else 1
+    model = models.jtrVAE(data_dim[1:], 2, 3, coord=coord)
+    encoded = model.encode(x)
+    assert_equal(encoded[0].shape, encoded[1].shape)
+    assert_equal(encoded[0].shape, (data_dim[0], coord+2))
+    assert_equal(encoded[2].shape, (data_dim[0], 3))
+
+
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8)])
+def test_sstrvae_encode(data_dim, coord):
+    x = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
+    if coord > 0:
+        coord = coord if len(data_dim[1:]) > 1 else 1
+    model = models.sstrVAE(data_dim[1:], 2, 5, coord=coord)
+    encoded = model.encode(x)
+    assert_equal(encoded[0].shape, encoded[1].shape)
+    assert_equal(encoded[0].shape, (data_dim[0], coord+2))
+    assert_equal(encoded[2].shape, (data_dim[0],))
+
