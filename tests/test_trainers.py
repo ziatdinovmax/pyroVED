@@ -34,6 +34,7 @@ def test_svi_trainer_trvae(data_dim, coord):
     for _ in range(2):
         trainer.step(train_loader)
     weights_after = vae.state_dict()
+    assert_(not torch.isnan(tt(trainer.loss_history["training_loss"])).any())
     assert_(not assert_weights_equal(weights_before, weights_after))
 
 
@@ -48,6 +49,7 @@ def test_svi_trainer_jtrvae(data_dim, coord):
     for _ in range(2):
         trainer.step(train_loader)
     weights_after = vae.state_dict()
+    assert_(not torch.isnan(tt(trainer.loss_history["training_loss"])).any())
     assert_(not assert_weights_equal(weights_before, weights_after))
 
 
@@ -65,4 +67,5 @@ def test_auxsvi_trainer(data_dim, coord):
     for _ in range(2):
         trainer.step(loader_unsup, loader_sup)
     weights_after = vae.state_dict()
+    assert_(not torch.isnan(tt(trainer.history["training_loss"])).any())
     assert_(not assert_weights_equal(weights_before, weights_after))
