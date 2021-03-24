@@ -251,17 +251,15 @@ class jtrVAE(nn.Module):
 
     def decode(self, z: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
         """
-        Decodes a batch of latent coordnates
+        Decodes a batch of latent coordinates
         """
-        z = z.to(self.device)
-        if y is not None:
-            z = torch.cat([z, y.to(self.device)], -1)
+        z = torch.cat([z.to(self.device), y.to(self.device)], -1)
         z = (z,)
         if self.coord > 0:
             z = (self.grid.expand(z[0].shape[0], *self.grid.shape),) + z
         with torch.no_grad():
             loc = self.decoder_net(*z)
-        return loc
+        return loc.view(-1, *self.data_dim)
 
     def manifold2d(self, d: int, disc_idx: int = 0, plot: bool = True,
                    **kwargs: Union[str, int]) -> torch.Tensor:

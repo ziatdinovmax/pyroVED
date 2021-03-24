@@ -326,7 +326,7 @@ class sstrVAE(nn.Module):
         if self.coord > 0:
             z = (self.grid.expand(z[0].shape[0], *self.grid.shape),) + z
         with torch.no_grad():
-            loc = self.decoder_net(*z)
+            loc = self.decoder(*z)
         return loc.view(-1, *self.data_dim)
 
     def manifold2d(self, d: int, plot: bool = True,
