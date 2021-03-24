@@ -19,7 +19,6 @@ def assert_weights_equal(m1, m2):
         eq_w.append(np.array_equal(
             p1.detach().cpu().numpy(),
             p2.detach().cpu().numpy()))
-    print(eq_w)
     return all(eq_w)
 
 
