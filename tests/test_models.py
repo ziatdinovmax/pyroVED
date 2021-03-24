@@ -138,7 +138,7 @@ def test_sstrvae_cont_sites_dims(data_dim, coord):
 
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
 @pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8)])
-def test_jtrvae_disc_sites_dims(data_dim, coord):
+def test_sstrvae_disc_sites_dims(data_dim, coord):
     x = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
     if coord > 0:
         coord = coord if len(data_dim[1:]) > 1 else 1
@@ -152,7 +152,7 @@ def test_jtrvae_disc_sites_dims(data_dim, coord):
 
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
 @pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8)])
-def test_jtrvae_cont_sites_fn(data_dim, coord):
+def test_sstrvae_cont_sites_fn(data_dim, coord):
     x = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
     if coord > 0:
         coord = coord if len(data_dim[1:]) > 1 else 1
