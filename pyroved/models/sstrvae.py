@@ -283,7 +283,7 @@ class sstrVAE(nn.Module):
 
         if y is None:
             y = self.classifier(x_new)
-        if y.ndim == 1:
+        if y.ndim < 2:
             y = to_onehot(y, self.num_classes)
         num_batches = kwargs.get("num_batches", 1)
         batch_size = len(x_new) // num_batches
@@ -335,7 +335,8 @@ class sstrVAE(nn.Module):
         Returns a learned latent manifold in the image space
         """
         cls = tt(kwargs.get("label", 0))
-        cls = to_onehot(cls.unsqueeze(0), self.num_classes)
+        if cls.ndim < 2:
+            cls = to_onehot(cls.unsqueeze(0), self.num_classes)
         grid_x = dist.Normal(0, 1).icdf(torch.linspace(0.95, 0.05, d))
         grid_y = dist.Normal(0, 1).icdf(torch.linspace(0.05, 0.95, d))
         loc_all = []
