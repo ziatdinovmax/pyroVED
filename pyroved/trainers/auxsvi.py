@@ -111,7 +111,7 @@ class auxSVItrainer:
         with torch.no_grad():
             for data, labels in loader_val:
                 predicted = self.model.classifier(data)
-                _, lab_idx = torch.max(labels, 1)
+                _, lab_idx = torch.max(labels.cpu(), 1)
                 correct += (predicted == lab_idx).sum().item()
                 total += data.size(0)
         return correct / total
