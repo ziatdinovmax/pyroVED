@@ -138,7 +138,7 @@ class trVAE(nn.Module):
                 # Split latent variable into parts for rotation
                 # and/or translation and image content
                 phi, dx, z = self.split_latent(z)
-                if torch.sum(dx) != 0:
+                if torch.sum(dx.abs()) != 0:
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
                 grid = self.grid.expand(x.shape[0], *self.grid.shape)

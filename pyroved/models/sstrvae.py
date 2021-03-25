@@ -138,7 +138,7 @@ class sstrVAE(nn.Module):
             # and image content
             if self.coord > 0:
                 phi, dx, zs = self.split_latent(zs)
-                if torch.sum(dx) != 0:
+                if torch.sum(dx.abs()) != 0:
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
                 if self.ndim > 1:

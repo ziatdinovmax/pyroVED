@@ -268,7 +268,7 @@ def test_jtrvae_encode(data_dim, coord):
     encoded = model.encode(x)
     assert_equal(encoded[0].shape, encoded[1].shape)
     assert_equal(encoded[0].shape, (data_dim[0], coord+2))
-    assert_equal(encoded[2].shape, (data_dim[0], 3))
+    assert_equal(encoded[2].shape, (data_dim[0],))
 
 
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
