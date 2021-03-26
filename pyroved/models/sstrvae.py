@@ -120,20 +120,23 @@ class sstrVAE(nn.Module):
 
     def model(self,
               xs: torch.Tensor,
-              ys: Optional[torch.Tensor] = None) -> torch.Tensor:
+              ys: Optional[torch.Tensor] = None,
+              **kwargs: float) -> torch.Tensor:
         """
         Model of the generative process p(x|z,y)p(y)p(z)
         """
         pyro.module("ss_vae", self)
         batch_dim = xs.size(0)
         specs = dict(dtype=xs.dtype, device=xs.device)
+        beta = kwargs.get("scale_factor", 1.)
         # pyro.plate enforces independence between variables in batches xs, ys
         with pyro.plate("data"):
             # sample the latent vector from the constant prior distribution
             prior_loc = torch.zeros(batch_dim, self.z_dim, **specs)
             prior_scale = torch.ones(batch_dim, self.z_dim, **specs)
-            zs = pyro.sample(
-                "z", dist.Normal(prior_loc, prior_scale).to_event(1))
+            with pyro.poutine.scale(scale=beta):
+                zs = pyro.sample(
+                    "z", dist.Normal(prior_loc, prior_scale).to_event(1))
             # split latent variable into parts for rotation and/or translation
             # and image content
             if self.coord > 0:
@@ -159,11 +162,12 @@ class sstrVAE(nn.Module):
             pyro.sample("x", self.sampler_d(loc).to_event(1), obs=xs)
 
     def guide(self, xs: torch.Tensor,
-              ys: Optional[torch.Tensor] = None) -> None:
+              ys: Optional[torch.Tensor] = None,
+              **kwargs: float) -> None:
         """
         Guide q(z|y,x)q(y|x)
         """
-        pyro.module("ss_vae", self)
+        beta = kwargs.get("scale_factor", 1.)
         with pyro.plate("data"):
             # sample and score the digit with the variational distribution
             # q(y|x) = categorical(alpha(x))
@@ -173,7 +177,8 @@ class sstrVAE(nn.Module):
             # sample (and score) the latent vector with the variational
             # distribution q(z|x,y) = normal(loc(x,y),scale(x,y))
             loc, scale = self.encoder_z([xs, ys])
-            pyro.sample("z", dist.Normal(loc, scale).to_event(1))
+            with pyro.poutine.scale(scale=beta):
+                pyro.sample("z", dist.Normal(loc, scale).to_event(1))
 
     def split_latent(self, zs: torch.Tensor) -> Tuple[torch.Tensor]:
         """

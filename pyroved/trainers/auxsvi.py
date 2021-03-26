@@ -64,20 +64,22 @@ class auxSVItrainer:
 
     def compute_loss(self,
                      xs: torch.Tensor,
-                     ys: Optional[torch.Tensor] = None) -> float:
+                     ys: Optional[torch.Tensor] = None,
+                     **kwargs: float) -> float:
         """
         Computes basic and auxillary losses
         """
         xs = xs.to(self.device)
         if ys is not None:
             ys = ys.to(self.device)
-        loss = self.loss_basic.step(xs, ys)
+        loss = self.loss_basic.step(xs, ys, **kwargs)
         loss_aux = self.loss_aux.step(xs, ys)
         return loss + loss_aux
 
     def train(self,
               loader_unsup: Type[torch.utils.data.DataLoader],
               loader_sup: Type[torch.utils.data.DataLoader],
+              **kwargs: float
               ) -> float:
         """
         Train a single epoch
@@ -92,7 +94,7 @@ class auxSVItrainer:
         unsup_count = 0
         for i, (xs,) in enumerate(loader_unsup):
             # Compute and store loss for unsupervised part
-            epoch_loss += self.compute_loss(xs)
+            epoch_loss += self.compute_loss(xs, **kwargs)
             unsup_count += xs.shape[0]
             if i % p == 1:
                 # sample random batches xs and ys
@@ -119,9 +121,10 @@ class auxSVItrainer:
     def step(self,
              loader_unsup: torch.utils.data.DataLoader,
              loader_sup: torch.utils.data.DataLoader,
-             loader_val: Optional[torch.utils.data.DataLoader] = None
+             loader_val: Optional[torch.utils.data.DataLoader] = None,
+             **kwargs: float
              ) -> None:
-        train_loss = self.train(loader_unsup, loader_sup)
+        train_loss = self.train(loader_unsup, loader_sup, **kwargs)
         self.history["training_loss"].append(train_loss)
         if loader_val is not None:
             eval_acc = self.evaluate(loader_val)
