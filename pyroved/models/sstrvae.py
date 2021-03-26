@@ -111,7 +111,6 @@ class sstrVAE(nn.Module):
         dy_pri = kwargs.get("dy_prior", dx_pri.clone())
         t_prior = tt([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
         self.t_prior = t_prior.to(self.device)
-        self.aux_loss_multiplier = aux_loss_multiplier
         self.to(self.device)
 
     def model(self,
