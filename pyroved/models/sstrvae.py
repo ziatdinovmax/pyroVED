@@ -30,9 +30,6 @@ class sstrVAE(nn.Module):
             and *coord=3* enforces both rotational and translational invariances.
             For 1D systems, *coord=0* is vanilla VAE and *coord>0* enforces
             transaltional invariance.
-        aux_loss_multiplier:
-            Hyperparameter that modulates the importance of the auxiliary loss
-            term. See Eq. 9 in https://arxiv.org/abs/1406.5298. Default values is 20.
         hidden_dim_e:
             Number of hidden units per each layer in encoder (inference network).
         hidden_dim_d:
@@ -72,7 +69,6 @@ class sstrVAE(nn.Module):
                  latent_dim: int,
                  num_classes: int,
                  coord: int = 3,
-                 aux_loss_multiplier: int = 20,
                  hidden_dim_e: int = 128,
                  hidden_dim_d: int = 128,
                  hidden_dim_cls: int = 128,
@@ -211,16 +207,18 @@ class sstrVAE(nn.Module):
         return phi, dx, zs
 
     def model_classify(self, xs: torch.Tensor,
-                       ys: Optional[torch.Tensor] = None) -> None:
+                       ys: Optional[torch.Tensor] = None,
+                       **kwargs: float) -> None:
         """
         Models an auxiliary (supervised) loss
         """
         pyro.module("ss_vae", self)
         with pyro.plate("data"):
             # the extra term to yield an auxiliary loss
+            aux_loss_multiplier = kwargs.get("aux_loss_multiplier", 20)
             if ys is not None:
                 alpha = self.encoder_y.forward(xs)
-                with pyro.poutine.scale(scale=self.aux_loss_multiplier):
+                with pyro.poutine.scale(scale=aux_loss_multiplier):
                     pyro.sample("y_aux", dist.OneHotCategorical(alpha), obs=ys)
 
     def guide_classify(self, xs, ys=None):

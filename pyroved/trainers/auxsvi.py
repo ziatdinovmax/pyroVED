@@ -77,7 +77,7 @@ class auxSVItrainer:
         if ys is not None:
             ys = ys.to(self.device)
         loss = self.loss_basic.step(xs, ys, **kwargs)
-        loss_aux = self.loss_aux.step(xs, ys)
+        loss_aux = self.loss_aux.step(xs, ys, **kwargs)
         return loss + loss_aux
 
     def train(self,
@@ -104,7 +104,7 @@ class auxSVItrainer:
                 # sample random batches xs and ys
                 xs, ys = loader_sup.next()
                 # Compute supervised loss
-                _ = self.compute_loss(xs, ys)
+                _ = self.compute_loss(xs, ys, **kwargs)
 
         return epoch_loss / unsup_count
 
@@ -128,6 +128,23 @@ class auxSVItrainer:
              loader_val: Optional[torch.utils.data.DataLoader] = None,
              **kwargs: float
              ) -> None:
+        """
+        Single train (and evaluation, if any) step.
+
+        Args:
+            loader_unsup:
+                Pytorch's datalaoder with unlabeled training data
+            loader_sup:
+                Pytorch's dataloader with labeled training data
+            loader_val:
+                Pytorch's dataloader with validation data
+            **scale_factor:
+                Scale factor for KL divergence. See e.g. https://arxiv.org/abs/1804.03599
+                Default value is 1 (i.e. no scaling)
+            **aux_loss_multiplier:
+                Hyperparameter that modulates the importance of the auxiliary loss
+                term. See Eq. 9 in https://arxiv.org/abs/1406.5298. Default values is 20.
+        """
         train_loss = self.train(loader_unsup, loader_sup, **kwargs)
         self.history["training_loss"].append(train_loss)
         if loader_val is not None:
