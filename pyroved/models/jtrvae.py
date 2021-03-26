@@ -140,7 +140,7 @@ class jtrVAE(nn.Module):
             # and image content
             if self.coord > 0:
                 phi, dx, z = self.split_latent(z.repeat(self.discrete_dim, 1))
-                if torch.sum(dx) != 0:
+                if torch.sum(dx.abs()) != 0:
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
                 grid = self.grid.expand(bdim*self.discrete_dim, *self.grid.shape)
@@ -247,7 +247,8 @@ class jtrVAE(nn.Module):
         z_loc = z[:, :self.z_dim]
         z_scale = z[:, self.z_dim:2*self.z_dim]
         alphas = z[:, 2*self.z_dim:]
-        return z_loc, z_scale, alphas
+        _, pred_labels = torch.max(alphas, 1)
+        return z_loc, z_scale, pred_labels
 
     def decode(self, z: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
         """
@@ -288,3 +289,16 @@ class jtrVAE(nn.Module):
             elif self.ndim == 1:
                 plot_spect_grid(loc_all, d)
         return loc_all
+
+    def save_weights(self, filepath: str) -> None:
+        """
+        Saves trained weights of encoder and decoder neural networks
+        """
+        torch.save(self.state_dict(), filepath)
+
+    def load_weights(self, filepath: str) -> None:
+        """
+        Loads saved weights of encoder and decoder neural networks
+        """
+        weights = torch.load(filepath, map_location=self.device)
+        self.load_state_dict(weights)

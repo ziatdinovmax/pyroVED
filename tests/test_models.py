@@ -1,4 +1,5 @@
 import sys
+from copy import deepcopy as dc
 
 import torch
 import torch.tensor as tt
@@ -9,6 +10,7 @@ import pyro.infer as infer
 from pyro.poutine.enum_messenger import EnumMessenger
 import pytest
 from numpy.testing import assert_equal, assert_
+from numpy import array_equal
 
 sys.path.append("../../")
 
@@ -33,6 +35,15 @@ def get_enum_traces(model, x):
         pyro.poutine.replay(model_, trace=guide_trace),
         graph_type="flat").get_trace(x)
     return guide_trace, model_trace
+
+
+def assert_weights_equal(m1, m2):
+    eq_w = []
+    for p1, p2 in zip(m1.values(), m2.values()):
+        eq_w.append(array_equal(
+            p1.detach().cpu().numpy(),
+            p2.detach().cpu().numpy()))
+    return all(eq_w)
 
 
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
@@ -268,7 +279,7 @@ def test_jtrvae_encode(data_dim, coord):
     encoded = model.encode(x)
     assert_equal(encoded[0].shape, encoded[1].shape)
     assert_equal(encoded[0].shape, (data_dim[0], coord+2))
-    assert_equal(encoded[2].shape, (data_dim[0], 3))
+    assert_equal(encoded[2].shape, (data_dim[0],))
 
 
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
@@ -283,3 +294,38 @@ def test_sstrvae_encode(data_dim, coord):
     assert_equal(encoded[0].shape, (data_dim[0], coord+2))
     assert_equal(encoded[2].shape, (data_dim[0],))
 
+
+@pytest.fixture(scope='session')
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+def test_save_load_trvae(coord):
+    data_dim = (5, 8, 8)
+    vae = models.trVAE(data_dim[1:], 2, coord=coord)
+    weights_init = dc(vae.state_dict())
+    vae.save_weights("my_weights")
+    vae.load_weights("my_weights")
+    weights_loaded = vae.state_dict()
+    assert_(assert_weights_equal(weights_loaded, weights_init))
+
+
+@pytest.fixture(scope='session')
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+def test_save_load_sstrvae(coord):
+    data_dim = (5, 8, 8)
+    vae = models.sstrVAE(data_dim[1:], 2, 3, coord=coord)
+    weights_init = dc(vae.state_dict())
+    vae.save_weights("my_weights")
+    vae.load_weights("my_weights")
+    weights_loaded = vae.state_dict()
+    assert_(assert_weights_equal(weights_loaded, weights_init))
+
+
+@pytest.fixture(scope='session')
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+def test_save_load_jtrvae(coord):
+    data_dim = (5, 8, 8)
+    vae = models.jtrVAE(data_dim[1:], 2, 3, coord=coord)
+    weights_init = dc(vae.state_dict())
+    vae.save_weights("my_weights")
+    vae.load_weights("my_weights")
+    weights_loaded = vae.state_dict()
+    assert_(assert_weights_equal(weights_loaded, weights_init))

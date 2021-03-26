@@ -138,14 +138,13 @@ class trVAE(nn.Module):
                 # Split latent variable into parts for rotation
                 # and/or translation and image content
                 phi, dx, z = self.split_latent(z)
-                if torch.sum(dx) != 0:
+                if torch.sum(dx.abs()) != 0:
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
                 grid = self.grid.expand(x.shape[0], *self.grid.shape)
                 x_coord_prime = transform_coordinates(grid, phi, dx)
             # Add class label (if any)
             if y is not None:
-                y = to_onehot(y, self.num_classes)
                 z = torch.cat([z, y], dim=-1)
             # decode the latent code z together with the transformed coordinates (if any)
             dec_args = (x_coord_prime, z) if self.coord else (z,)
@@ -269,7 +268,8 @@ class trVAE(nn.Module):
         """
         if self.num_classes > 0:
             cls = tt(kwargs.get("label", 0))
-            cls = to_onehot(cls.unsqueeze(0), self.num_classes)
+            if cls.ndim < 2:
+                cls = to_onehot(cls.unsqueeze(0), self.num_classes)
         grid_x = dist.Normal(0, 1).icdf(torch.linspace(0.95, 0.05, d))
         grid_y = dist.Normal(0, 1).icdf(torch.linspace(0.05, 0.95, d))
         loc_all = []
@@ -291,3 +291,16 @@ class trVAE(nn.Module):
             elif self.ndim == 1:
                 plot_spect_grid(loc_all, d)
         return loc_all
+
+    def save_weights(self, filepath: str) -> None:
+        """
+        Saves trained weights of encoder and decoder neural networks
+        """
+        torch.save(self.state_dict(), filepath)
+
+    def load_weights(self, filepath: str) -> None:
+        """
+        Loads saved weights of encoder and decoder neural networks
+        """
+        weights = torch.load(filepath, map_location=self.device)
+        self.load_state_dict(weights)

@@ -30,9 +30,6 @@ class sstrVAE(nn.Module):
             and *coord=3* enforces both rotational and translational invariances.
             For 1D systems, *coord=0* is vanilla VAE and *coord>0* enforces
             transaltional invariance.
-        aux_loss_multiplier:
-            Hyperparameter that modulates the importance of the auxiliary loss
-            term. See Eq. 9 in https://arxiv.org/abs/1406.5298. Default values is 20.
         hidden_dim_e:
             Number of hidden units per each layer in encoder (inference network).
         hidden_dim_d:
@@ -72,7 +69,6 @@ class sstrVAE(nn.Module):
                  latent_dim: int,
                  num_classes: int,
                  coord: int = 3,
-                 aux_loss_multiplier: int = 20,
                  hidden_dim_e: int = 128,
                  hidden_dim_d: int = 128,
                  hidden_dim_cls: int = 128,
@@ -115,30 +111,32 @@ class sstrVAE(nn.Module):
         dy_pri = kwargs.get("dy_prior", dx_pri.clone())
         t_prior = tt([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
         self.t_prior = t_prior.to(self.device)
-        self.aux_loss_multiplier = aux_loss_multiplier
         self.to(self.device)
 
     def model(self,
               xs: torch.Tensor,
-              ys: Optional[torch.Tensor] = None) -> torch.Tensor:
+              ys: Optional[torch.Tensor] = None,
+              **kwargs: float) -> torch.Tensor:
         """
         Model of the generative process p(x|z,y)p(y)p(z)
         """
         pyro.module("ss_vae", self)
         batch_dim = xs.size(0)
         specs = dict(dtype=xs.dtype, device=xs.device)
+        beta = kwargs.get("scale_factor", 1.)
         # pyro.plate enforces independence between variables in batches xs, ys
         with pyro.plate("data"):
             # sample the latent vector from the constant prior distribution
             prior_loc = torch.zeros(batch_dim, self.z_dim, **specs)
             prior_scale = torch.ones(batch_dim, self.z_dim, **specs)
-            zs = pyro.sample(
-                "z", dist.Normal(prior_loc, prior_scale).to_event(1))
+            with pyro.poutine.scale(scale=beta):
+                zs = pyro.sample(
+                    "z", dist.Normal(prior_loc, prior_scale).to_event(1))
             # split latent variable into parts for rotation and/or translation
             # and image content
             if self.coord > 0:
                 phi, dx, zs = self.split_latent(zs)
-                if torch.sum(dx) != 0:
+                if torch.sum(dx.abs()) != 0:
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
                 if self.ndim > 1:
@@ -159,11 +157,12 @@ class sstrVAE(nn.Module):
             pyro.sample("x", self.sampler_d(loc).to_event(1), obs=xs)
 
     def guide(self, xs: torch.Tensor,
-              ys: Optional[torch.Tensor] = None) -> None:
+              ys: Optional[torch.Tensor] = None,
+              **kwargs: float) -> None:
         """
         Guide q(z|y,x)q(y|x)
         """
-        pyro.module("ss_vae", self)
+        beta = kwargs.get("scale_factor", 1.)
         with pyro.plate("data"):
             # sample and score the digit with the variational distribution
             # q(y|x) = categorical(alpha(x))
@@ -173,7 +172,8 @@ class sstrVAE(nn.Module):
             # sample (and score) the latent vector with the variational
             # distribution q(z|x,y) = normal(loc(x,y),scale(x,y))
             loc, scale = self.encoder_z([xs, ys])
-            pyro.sample("z", dist.Normal(loc, scale).to_event(1))
+            with pyro.poutine.scale(scale=beta):
+                pyro.sample("z", dist.Normal(loc, scale).to_event(1))
 
     def split_latent(self, zs: torch.Tensor) -> Tuple[torch.Tensor]:
         """
@@ -206,19 +206,21 @@ class sstrVAE(nn.Module):
         return phi, dx, zs
 
     def model_classify(self, xs: torch.Tensor,
-                       ys: Optional[torch.Tensor] = None) -> None:
+                       ys: Optional[torch.Tensor] = None,
+                       **kwargs: float) -> None:
         """
         Models an auxiliary (supervised) loss
         """
         pyro.module("ss_vae", self)
         with pyro.plate("data"):
             # the extra term to yield an auxiliary loss
+            aux_loss_multiplier = kwargs.get("aux_loss_multiplier", 20)
             if ys is not None:
                 alpha = self.encoder_y.forward(xs)
-                with pyro.poutine.scale(scale=self.aux_loss_multiplier):
+                with pyro.poutine.scale(scale=aux_loss_multiplier):
                     pyro.sample("y_aux", dist.OneHotCategorical(alpha), obs=ys)
 
-    def guide_classify(self, xs, ys=None):
+    def guide_classify(self, xs, ys=None, **kwargs):
         """
         Dummy guide function to accompany model_classify
         """
@@ -283,7 +285,7 @@ class sstrVAE(nn.Module):
 
         if y is None:
             y = self.classifier(x_new)
-        if y.ndim == 1:
+        if y.ndim < 2:
             y = to_onehot(y, self.num_classes)
         num_batches = kwargs.get("num_batches", 1)
         batch_size = len(x_new) // num_batches
@@ -335,7 +337,8 @@ class sstrVAE(nn.Module):
         Returns a learned latent manifold in the image space
         """
         cls = tt(kwargs.get("label", 0))
-        cls = to_onehot(cls.unsqueeze(0), self.num_classes)
+        if cls.ndim < 2:
+            cls = to_onehot(cls.unsqueeze(0), self.num_classes)
         grid_x = dist.Normal(0, 1).icdf(torch.linspace(0.95, 0.05, d))
         grid_y = dist.Normal(0, 1).icdf(torch.linspace(0.05, 0.95, d))
         loc_all = []
@@ -357,3 +360,16 @@ class sstrVAE(nn.Module):
             elif self.ndim == 1:
                 plot_spect_grid(loc_all, d)
         return loc_all
+
+    def save_weights(self, filepath: str) -> None:
+        """
+        Saves trained weights of encoder(s) and decoder
+        """
+        torch.save(self.state_dict(), filepath)
+
+    def load_weights(self, filepath: str) -> None:
+        """
+        Loads saved weights of encoder(s) and decoder
+        """
+        weights = torch.load(filepath, map_location=self.device)
+        self.load_state_dict(weights)

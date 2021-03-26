@@ -22,6 +22,8 @@ class auxSVItrainer:
             Pyro optimizer (Defaults to Adam with learning rate 5e-4)
         seed:
             Enforces reproducibility
+        kwargs:
+            learning rate as 'lr' (Default: 5e-4)
 
     Example:
 
@@ -39,7 +41,8 @@ class auxSVItrainer:
     def __init__(self,
                  model: Type[nn.Module],
                  optimizer: Type[optim.PyroOptim] = None,
-                 seed: int = 1
+                 seed: int = 1,
+                 **kwargs: float
                  ) -> None:
         """
         Initializes trainer parameters
@@ -48,7 +51,8 @@ class auxSVItrainer:
         set_deterministic_mode(seed)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if optimizer is None:
-            optimizer = optim.Adam({"lr": 5e-4})
+            lr = kwargs.get("lr", 5e-4)
+            optimizer = optim.Adam({"lr": lr})
         guide = infer.config_enumerate(model.guide, "parallel", expand=True)
         loss = pyro.infer.TraceEnum_ELBO
         self.loss_basic = infer.SVI(
@@ -64,20 +68,22 @@ class auxSVItrainer:
 
     def compute_loss(self,
                      xs: torch.Tensor,
-                     ys: Optional[torch.Tensor] = None) -> float:
+                     ys: Optional[torch.Tensor] = None,
+                     **kwargs: float) -> float:
         """
         Computes basic and auxillary losses
         """
         xs = xs.to(self.device)
         if ys is not None:
             ys = ys.to(self.device)
-        loss = self.loss_basic.step(xs, ys)
-        loss_aux = self.loss_aux.step(xs, ys)
+        loss = self.loss_basic.step(xs, ys, **kwargs)
+        loss_aux = self.loss_aux.step(xs, ys, **kwargs)
         return loss + loss_aux
 
     def train(self,
               loader_unsup: Type[torch.utils.data.DataLoader],
               loader_sup: Type[torch.utils.data.DataLoader],
+              **kwargs: float
               ) -> float:
         """
         Train a single epoch
@@ -92,13 +98,13 @@ class auxSVItrainer:
         unsup_count = 0
         for i, (xs,) in enumerate(loader_unsup):
             # Compute and store loss for unsupervised part
-            epoch_loss += self.compute_loss(xs)
+            epoch_loss += self.compute_loss(xs, **kwargs)
             unsup_count += xs.shape[0]
             if i % p == 1:
                 # sample random batches xs and ys
                 xs, ys = loader_sup.next()
                 # Compute supervised loss
-                _ = self.compute_loss(xs, ys)
+                _ = self.compute_loss(xs, ys, **kwargs)
 
         return epoch_loss / unsup_count
 
@@ -111,7 +117,7 @@ class auxSVItrainer:
         with torch.no_grad():
             for data, labels in loader_val:
                 predicted = self.model.classifier(data)
-                _, lab_idx = torch.max(labels, 1)
+                _, lab_idx = torch.max(labels.cpu(), 1)
                 correct += (predicted == lab_idx).sum().item()
                 total += data.size(0)
         return correct / total
@@ -119,9 +125,27 @@ class auxSVItrainer:
     def step(self,
              loader_unsup: torch.utils.data.DataLoader,
              loader_sup: torch.utils.data.DataLoader,
-             loader_val: Optional[torch.utils.data.DataLoader] = None
+             loader_val: Optional[torch.utils.data.DataLoader] = None,
+             **kwargs: float
              ) -> None:
-        train_loss = self.train(loader_unsup, loader_sup)
+        """
+        Single train (and evaluation, if any) step.
+
+        Args:
+            loader_unsup:
+                Pytorch's datalaoder with unlabeled training data
+            loader_sup:
+                Pytorch's dataloader with labeled training data
+            loader_val:
+                Pytorch's dataloader with validation data
+            **scale_factor:
+                Scale factor for KL divergence. See e.g. https://arxiv.org/abs/1804.03599
+                Default value is 1 (i.e. no scaling)
+            **aux_loss_multiplier:
+                Hyperparameter that modulates the importance of the auxiliary loss
+                term. See Eq. 9 in https://arxiv.org/abs/1406.5298. Default values is 20.
+        """
+        train_loss = self.train(loader_unsup, loader_sup, **kwargs)
         self.history["training_loss"].append(train_loss)
         if loader_val is not None:
             eval_acc = self.evaluate(loader_val)
