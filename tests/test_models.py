@@ -295,6 +295,7 @@ def test_sstrvae_encode(data_dim, coord):
     assert_equal(encoded[2].shape, (data_dim[0],))
 
 
+@pytest.fixture(scope='session')
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
 def test_save_load_trvae(coord):
     data_dim = (5, 8, 8)
@@ -306,6 +307,7 @@ def test_save_load_trvae(coord):
     assert_(assert_weights_equal(weights_loaded, weights_init))
 
 
+@pytest.fixture(scope='session')
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
 def test_save_load_sstrvae(coord):
     data_dim = (5, 8, 8)
@@ -317,6 +319,7 @@ def test_save_load_sstrvae(coord):
     assert_(assert_weights_equal(weights_loaded, weights_init))
 
 
+@pytest.fixture(scope='session')
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
 def test_save_load_jtrvae(coord):
     data_dim = (5, 8, 8)
