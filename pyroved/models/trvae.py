@@ -291,3 +291,16 @@ class trVAE(nn.Module):
             elif self.ndim == 1:
                 plot_spect_grid(loc_all, d)
         return loc_all
+
+    def save_weights(self, filepath: str) -> None:
+        """
+        Saves trained weights of encoder and decoder neural networks
+        """
+        torch.save(self.state_dict(), filepath)
+
+    def load_weights(self, filepath: str) -> None:
+        """
+        Loads saved weights of encoder and decoder neural networks
+        """
+        weights = torch.load(filepath, map_location=self.device)
+        self.load_state_dict(weights)

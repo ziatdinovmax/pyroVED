@@ -360,3 +360,16 @@ class sstrVAE(nn.Module):
             elif self.ndim == 1:
                 plot_spect_grid(loc_all, d)
         return loc_all
+
+    def save_weights(self, filepath: str) -> None:
+        """
+        Saves trained weights of encoder(s) and decoder
+        """
+        torch.save(self.state_dict(), filepath)
+
+    def load_weights(self, filepath: str) -> None:
+        """
+        Loads saved weights of encoder(s) and decoder
+        """
+        weights = torch.load(filepath, map_location=self.device)
+        self.load_state_dict(weights)
