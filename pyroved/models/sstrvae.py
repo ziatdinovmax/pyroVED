@@ -220,7 +220,7 @@ class sstrVAE(nn.Module):
                 with pyro.poutine.scale(scale=aux_loss_multiplier):
                     pyro.sample("y_aux", dist.OneHotCategorical(alpha), obs=ys)
 
-    def guide_classify(self, xs, ys=None):
+    def guide_classify(self, xs, ys=None, **kwargs):
         """
         Dummy guide function to accompany model_classify
         """
