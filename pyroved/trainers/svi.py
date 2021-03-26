@@ -26,6 +26,8 @@ class SVItrainer:
             Exact discrete enumeration for discrete latent variables
         seed:
             Enforces reproducibility
+        kwargs:
+            learning rate as 'lr' (Default: 5e-4)
 
     Example:
 
