@@ -22,6 +22,8 @@ class auxSVItrainer:
             Pyro optimizer (Defaults to Adam with learning rate 5e-4)
         seed:
             Enforces reproducibility
+        kwargs:
+            learning rate as 'lr' (Default: 5e-4)
 
     Example:
 
@@ -39,7 +41,8 @@ class auxSVItrainer:
     def __init__(self,
                  model: Type[nn.Module],
                  optimizer: Type[optim.PyroOptim] = None,
-                 seed: int = 1
+                 seed: int = 1,
+                 **kwargs: float
                  ) -> None:
         """
         Initializes trainer parameters
@@ -48,7 +51,8 @@ class auxSVItrainer:
         set_deterministic_mode(seed)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if optimizer is None:
-            optimizer = optim.Adam({"lr": 5e-4})
+            lr = kwargs.get("lr", 5e-4)
+            optimizer = optim.Adam({"lr": lr})
         guide = infer.config_enumerate(model.guide, "parallel", expand=True)
         loss = pyro.infer.TraceEnum_ELBO
         self.loss_basic = infer.SVI(
