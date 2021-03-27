@@ -13,6 +13,8 @@ import torch.nn as nn
 import torch.tensor as tt
 from pyro.distributions.util import broadcast_shape
 
+from ..utils import get_activation
+
 
 class Concat(nn.Module):
     """
@@ -300,14 +302,3 @@ def make_fc_layers(in_dim: int,
              get_activation(activation)()])
     fc_layers = nn.Sequential(*fc_layers)
     return fc_layers
-
-
-def get_activation(activation: int) -> Type[nn.Module]:
-    """
-    Returns specified activation
-    """
-    if activation is None:
-        return
-    activations = {"lrelu": nn.LeakyReLU, "tanh": nn.Tanh,
-                   "softplus": nn.Softplus, "relu": nn.ReLU}
-    return activations[activation]
