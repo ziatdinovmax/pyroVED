@@ -287,7 +287,7 @@ class jtrVAE(nn.Module):
                     extent=[grid_x.min(), grid_x.max(), grid_y.min(), grid_y.max()],
                     **kwargs)
             elif self.ndim == 1:
-                plot_spect_grid(loc_all, d)
+                plot_spect_grid(loc_all, d, **kwargs)
         return loc_all
 
     def save_weights(self, filepath: str) -> None:
