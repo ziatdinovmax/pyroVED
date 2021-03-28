@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, Union, Type
+from typing import Optional, Tuple, Type, Union
 
 import pyro
 import pyro.distributions as dist
@@ -7,9 +7,9 @@ import torch.nn as nn
 import torch.tensor as tt
 
 from ..nets import fcDecoderNet, fcEncoderNet, sDecoderNet
-from ..utils import (generate_grid, get_sampler, plot_img_grid,
-                     plot_spect_grid, set_deterministic_mode, to_onehot,
-                     transform_coordinates)
+from ..utils import (generate_grid, generate_latent_grid, get_sampler,
+                     init_dataloader, plot_img_grid, plot_spect_grid,
+                     set_deterministic_mode, to_onehot, transform_coordinates)
 
 
 class trVAE(nn.Module):
@@ -210,55 +210,65 @@ class trVAE(nn.Module):
         """
         self.decoder = decoder_net
 
-    def _encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
+    def _encode(self,
+                x_new: Union[torch.Tensor, torch.utils.data.DataLoader],
+                **kwargs: int) -> torch.Tensor:
         """
         Encodes data using a trained inference (encoder) network
         in a batch-by-batch fashion
         """
-        def inference() -> torch.Tensor:
+        def inference(x_i) -> torch.Tensor:
             with torch.no_grad():
                 encoded = self.encoder_net(x_i)
             encoded = torch.cat(encoded, -1).cpu()
             return encoded
 
-        x_new = x_new.to(self.device)
-        num_batches = kwargs.get("num_batches", 10)
-        batch_size = len(x_new) // num_batches
+        if not isinstance(x_new, (torch.Tensor, torch.utils.data.DataLoader)):
+            raise TypeError("Pass data as torch.Tensor or DataLoader object")
+        if isinstance(x_new, torch.Tensor):
+            x_new = init_dataloader(x_new, **kwargs)
         z_encoded = []
-        for i in range(num_batches):
-            x_i = x_new[i*batch_size:(i+1)*batch_size]
-            z_encoded_i = inference()
-            z_encoded.append(z_encoded_i)
-        x_i = x_new[(i+1)*batch_size:]
-        if len(x_i) > 0:
-            z_encoded_i = inference()
-            z_encoded.append(z_encoded_i)
+        for (x_i,) in x_new:
+            z_encoded.append(inference(x_i.to(self.device)))
         return torch.cat(z_encoded)
 
     def encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
         Encodes data using a trained inference (encoder) network
-        (this is baiscally a wrapper for self._encode)
+        (this is basically a wrapper for self._encode)
         """
-        if isinstance(x_new, torch.utils.data.DataLoader):
-            x_new = x_new.dataset.tensors[0]
         z = self._encode(x_new)
-        z_loc = z[:, :self.z_dim]
-        z_scale = z[:, self.z_dim:]
+        z_loc, z_scale = z.split(self.z_dim, 1)
         return z_loc, z_scale
 
-    def decode(self, z: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
+    def _decode(self, z_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
+        """
+        Decodes latent coordiantes in a batch-by-batch fashion
+        """
+        def generator(z: torch.Tensor) -> torch.Tensor:
+            with torch.no_grad():
+                loc = self.decoder_net(*z)
+            return loc.cpu()
+
+        z_new = init_dataloader(z_new, **kwargs)
+        x_decoded = []
+        for z in z_new:
+            if self.coord > 0:
+                z = [self.grid.expand(z[0].shape[0], *self.grid.shape)] + z
+            x_decoded.append(generator(z))
+        return torch.cat(x_decoded)
+
+    def decode(self,
+               z: torch.Tensor,
+               y: torch.Tensor = None,
+               **kwargs: int) -> torch.Tensor:
         """
         Decodes a batch of latent coordnates
         """
         z = z.to(self.device)
         if y is not None:
             z = torch.cat([z, y.to(self.device)], -1)
-        z = (z,)
-        if self.coord > 0:
-            z = (self.grid.expand(z[0].shape[0], *self.grid.shape),) + z
-        with torch.no_grad():
-            loc = self.decoder_net(*z)
+        loc = self._decode(z, **kwargs)
         return loc
 
     def manifold2d(self, d: int, plot: bool = True,
@@ -270,27 +280,25 @@ class trVAE(nn.Module):
             cls = tt(kwargs.get("label", 0))
             if cls.ndim < 2:
                 cls = to_onehot(cls.unsqueeze(0), self.num_classes)
-        grid_x = dist.Normal(0, 1).icdf(torch.linspace(0.95, 0.05, d))
-        grid_y = dist.Normal(0, 1).icdf(torch.linspace(0.05, 0.95, d))
-        loc_all = []
-        for xi in grid_x:
-            for yi in grid_y:
-                z = tt([xi, yi]).float().to(self.device).unsqueeze(0)
-                if self.num_classes > 0:
-                    z = torch.cat([z, cls], dim=-1)
-                d_args = (self.grid.unsqueeze(0), z) if self.coord > 0 else (z,)
-                loc = self.decoder_net(*d_args)
-                loc_all.append(loc.detach().cpu())
-        loc_all = torch.cat(loc_all)
+        z, (grid_x, grid_y) = generate_latent_grid(d)
+        z = z.to(self.device)
+        if self.num_classes > 0:
+            z = torch.cat([z, cls.repeat(z.shape[0], 1)], dim=-1)
+        z = [z]
+        if self.coord:
+            grid = [self.grid.expand(z[0].shape[0], *self.grid.shape)]
+            z = grid + z
+        with torch.no_grad():
+            loc = self.decoder_net(*z).cpu()
         if plot:
             if self.ndim == 2:
                 plot_img_grid(
-                    loc_all, d,
+                    loc, d,
                     extent=[grid_x.min(), grid_x.max(), grid_y.min(), grid_y.max()],
                     **kwargs)
             elif self.ndim == 1:
-                plot_spect_grid(loc_all, d, **kwargs)
-        return loc_all
+                plot_spect_grid(loc, d, **kwargs)
+        return loc
 
     def save_weights(self, filepath: str) -> None:
         """

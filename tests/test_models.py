@@ -224,9 +224,9 @@ def test_sstrvae_decoder_sampler(sampler, expected_dist):
 @pytest.mark.parametrize("vae_model", [models.jtrVAE, models.sstrVAE])
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
 @pytest.mark.parametrize("data_dim", [(8,), (8, 8), (8,), (8, 8)])
-def test_jtrvae_decode(vae_model, data_dim, coord):
+def test_jsstrvae_decode(vae_model, data_dim, coord):
     if coord > 0:
-        coord = coord if len(data_dim[1:]) > 1 else 1
+        coord = coord if len(data_dim) > 1 else 1
     model = vae_model(data_dim, 2, 3, coord=coord)
     z_coord = torch.tensor([0.0, 0.0]).unsqueeze(0)
     y = utils.to_onehot(torch.tensor(0).unsqueeze(0), 3)
@@ -238,7 +238,7 @@ def test_jtrvae_decode(vae_model, data_dim, coord):
 @pytest.mark.parametrize("data_dim", [(8,), (8, 8)])
 def test_trvae_decode(data_dim, coord):
     if coord > 0:
-        coord = coord if len(data_dim[1:]) > 1 else 1
+        coord = coord if len(data_dim) > 1 else 1
     model = models.trVAE(data_dim, coord=coord)
     z_coord = torch.tensor([0.0, 0.0]).unsqueeze(0)
     decoded = model.decode(z_coord)
@@ -249,7 +249,7 @@ def test_trvae_decode(data_dim, coord):
 @pytest.mark.parametrize("data_dim", [(8,), (8, 8)])
 def test_ctrvae_decode(data_dim, coord):
     if coord > 0:
-        coord = coord if len(data_dim[1:]) > 1 else 1
+        coord = coord if len(data_dim) > 1 else 1
     model = models.trVAE(data_dim, num_classes=3, coord=coord)
     z_coord = torch.tensor([0.0, 0.0]).unsqueeze(0)
     y = utils.to_onehot(torch.tensor(0).unsqueeze(0), 3)
@@ -293,6 +293,28 @@ def test_sstrvae_encode(data_dim, coord):
     assert_equal(encoded[0].shape, encoded[1].shape)
     assert_equal(encoded[0].shape, (data_dim[0], coord+2))
     assert_equal(encoded[2].shape, (data_dim[0],))
+
+
+@pytest.mark.parametrize("num_classes", [0, 2, 3])
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(8,), (8, 8)])
+def test_trvae_manifold2d(data_dim, coord, num_classes):
+    if coord > 0:
+        coord = coord if len(data_dim) > 1 else 1
+    model = models.trVAE(data_dim, num_classes=num_classes, coord=coord)
+    decoded_grid = model.manifold2d(4, plot=False)
+    assert_equal(decoded_grid.squeeze().shape, (16, *data_dim))
+
+
+@pytest.mark.parametrize("vae_model", [models.jtrVAE, models.sstrVAE])
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(8,), (8, 8)])
+def test_jsstrvae_manifold2d(vae_model, data_dim, coord):
+    if coord > 0:
+        coord = coord if len(data_dim) > 1 else 1
+    model = vae_model(data_dim, 2, 3, coord=coord)
+    decoded_grid = model.manifold2d(4, plot=False)
+    assert_equal(decoded_grid.squeeze().shape, (16, *data_dim))
 
 
 @pytest.fixture(scope='session')

@@ -1,5 +1,7 @@
 from typing import Union, Tuple
 import torch
+import torch.tensor as tt
+import pyro.distributions as dist
 
 
 def generate_grid(data_dim: Tuple[int]) -> torch.Tensor:
@@ -44,3 +46,22 @@ def imcoordgrid(im_dim: Tuple[int]) -> torch.Tensor:
     yy = torch.linspace(1, -1, im_dim[1])
     x0, x1 = torch.meshgrid(xx, yy)
     return grid2xy(x0, x1)
+
+
+def generate_latent_grid(d: int, **kwargs) -> torch.Tensor:
+    """
+    Generates a grid of latent space coordinates
+    """
+    z_coord = kwargs.get("z_coord")
+    if z_coord:
+        z1, z2, z3, z4 = z_coord
+        grid_x = torch.linspace(z2, z1, d)
+        grid_y = torch.linspace(z3, z4, d)
+    else:
+        grid_x = dist.Normal(0, 1).icdf(torch.linspace(0.95, 0.05, d))
+        grid_y = dist.Normal(0, 1).icdf(torch.linspace(0.05, 0.95, d))
+    z = []
+    for xi in grid_x:
+        for yi in grid_y:
+            z.append(tt([xi, yi]).float().unsqueeze(0))
+    return torch.cat(z), (grid_x, grid_y)
