@@ -84,3 +84,24 @@ def test_upsampleblock_change_number_of_channels(in_channels, out_channels):
     up = conv.UpsampleBlock(2, in_channels, out_channels)
     out = up(data)
     assert_equal(out.size(1), out_channels)
+
+
+@pytest.mark.parametrize("latent_dim", [1, 2, 5])
+@pytest.mark.parametrize("input_channels", [1, 2, 3])
+@pytest.mark.parametrize("input_dim", [(8,), (8, 8), (8, 8, 8)])
+def test_conv_encoder_output(input_dim, input_channels, latent_dim):
+    x = torch.randn(5, input_channels, *input_dim)
+    encoder = conv.convEncoderNet(input_dim, input_channels, latent_dim)
+    z1, z2 = encoder(x)
+    assert_equal(z1.shape, z2.shape)
+    assert_equal(z1.shape, (x.shape[0], latent_dim))
+
+
+@pytest.mark.parametrize("latent_dim", [1, 2, 5])
+@pytest.mark.parametrize("output_channels", [1, 2, 3])
+@pytest.mark.parametrize("output_dim", [(8,), (8, 8), (8, 8, 8)])
+def test_conv_decoder_output(latent_dim, output_dim, output_channels):
+    z = torch.randn(5, latent_dim)
+    decoder = conv.convDecoderNet(latent_dim, output_dim, output_channels)
+    x = decoder(z)
+    assert_equal(x.shape, (z.shape[0], output_channels, *output_dim))
