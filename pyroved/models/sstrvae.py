@@ -256,7 +256,7 @@ class sstrVAE(nn.Module):
             _, predicted = torch.max(alpha.data, 1)
             return predicted.cpu()
 
-        x_new = init_dataloader(x_new, **kwargs)
+        x_new = init_dataloader(x_new, shuffle=False, **kwargs)
         y_predicted = []
         for (x_i,) in x_new:
             y_predicted.append(classify(x_i.to(self.device)))
@@ -280,7 +280,7 @@ class sstrVAE(nn.Module):
             y = self.classifier(x_new)
         if y.ndim < 2:
             y = to_onehot(y, self.num_classes)
-        xy_new = init_dataloader(x_new, y, **kwargs)
+        xy_new = init_dataloader(x_new, y, shuffle=False, **kwargs)
         z_encoded = []
         for x_i, y_i in xy_new:
             x_i = x_i.to(self.device)
@@ -313,7 +313,7 @@ class sstrVAE(nn.Module):
                 loc = self.decoder(*z)
             return loc.cpu()
 
-        z_new = init_dataloader(z_new, **kwargs)
+        z_new = init_dataloader(z_new, shuffle=False, **kwargs)
         x_decoded = []
         for z in z_new:
             if self.coord > 0:

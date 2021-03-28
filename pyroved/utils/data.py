@@ -9,6 +9,7 @@ from torchvision.transforms import ToTensor
 
 def init_dataloader(*args: torch.Tensor,
                     random_sampler: bool = False,
+                    shuffle: bool = True,
                     **kwargs: int
                     ) -> Type[torch.utils.data.DataLoader]:
 
@@ -20,7 +21,7 @@ def init_dataloader(*args: torch.Tensor,
             dataset=tensor_set, batch_size=batch_size, sampler=sampler)
     else:
         data_loader = torch.utils.data.DataLoader(
-            dataset=tensor_set, batch_size=batch_size, shuffle=True)
+            dataset=tensor_set, batch_size=batch_size, shuffle=shuffle)
     return data_loader
 
 

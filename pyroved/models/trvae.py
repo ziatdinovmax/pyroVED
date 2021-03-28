@@ -226,7 +226,7 @@ class trVAE(nn.Module):
         if not isinstance(x_new, (torch.Tensor, torch.utils.data.DataLoader)):
             raise TypeError("Pass data as torch.Tensor or DataLoader object")
         if isinstance(x_new, torch.Tensor):
-            x_new = init_dataloader(x_new, **kwargs)
+            x_new = init_dataloader(x_new, shuffle=False, **kwargs)
         z_encoded = []
         for (x_i,) in x_new:
             z_encoded.append(inference(x_i.to(self.device)))
@@ -250,7 +250,7 @@ class trVAE(nn.Module):
                 loc = self.decoder_net(*z)
             return loc.cpu()
 
-        z_new = init_dataloader(z_new, **kwargs)
+        z_new = init_dataloader(z_new, shuffle=False, **kwargs)
         x_decoded = []
         for z in z_new:
             if self.coord > 0:
