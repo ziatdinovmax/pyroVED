@@ -2,7 +2,7 @@
 conv.py
 =========
 
-Convolutional NNs and custom blocks
+Convolutional NN modules and custom blocks
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
@@ -18,6 +18,82 @@ from ..utils import get_activation, get_bnorm, get_conv, get_maxpool
 from warnings import warn, filterwarnings
 
 filterwarnings("ignore", module="torch.nn.functional")
+
+
+class convEncoderNet(nn.Module):
+    """
+    Standard convolutional encoder
+    """
+    def __init__(self,
+                 input_dim: Tuple[int],
+                 input_channels: int = 1,
+                 latent_dim: int = 2,
+                 layers_per_block: List[int] = [1, 2, 2],
+                 hidden_dim: int = 32,
+                 batchnorm: bool = True,
+                 activation: str = "lrelu",
+                 softplus_out: bool = True,
+                 pool: bool = True,
+                 ) -> None:
+        """
+        Initializes encoder module
+        """
+        super(convEncoderNet, self).__init__()
+        output_dim = (tt(input_dim) // 2**len(layers_per_block)).tolist()
+        output_channels = hidden_dim * len(layers_per_block)
+        self.latent_dim = latent_dim
+        self.feature_extractor = FeatureExtractor(
+            len(input_dim), input_channels, layers_per_block, hidden_dim,
+            batchnorm, activation, pool)
+        self.features2latent = features_to_latent(
+            [output_channels, *output_dim], 2*latent_dim)
+        self.activation_out = nn.Softplus() if softplus_out else lambda x: x
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor]:
+        """
+        Forward pass
+        """
+        x = self.feature_extractor(x)
+        encoded = self.features2latent(x)
+        mu, sigma = encoded.split(self.latent_dim, 1)
+        sigma = self.activation_out(sigma)
+        return mu, sigma
+
+
+class convDecoderNet(nn.Module):
+    """
+    Standard convolutional decoder
+    """
+    def __init__(self,
+                 latent_dim: int,
+                 output_dim: int,
+                 hidden_dim: int = 96,
+                 output_channels: int = 1,
+                 layers_per_block: List[int] = [1, 2, 2],
+                 batchnorm: bool = True,
+                 activation: str = "lrelu",
+                 sigmoid_out: bool = True,
+                 upsampling_mode: str = "bilinear",
+                 ) -> None:
+        """
+        Initializes decoder module
+        """
+        super(convDecoderNet, self).__init__()
+        input_dim = (tt(output_dim) // 2**len(layers_per_block)).tolist()
+        self.latent2features = latent_to_features(
+            latent_dim, [hidden_dim, *input_dim])
+        self.upsampler = Upsampler(
+            len(output_dim), hidden_dim, layers_per_block, output_channels,
+            batchnorm, activation, upsampling_mode)
+        self.activation_out = nn.Sigmoid() if sigmoid_out else lambda x: x
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass
+        """
+        x = self.latent2features(x)
+        x = self.activation_out(self.upsampler(x))
+        return x
 
 
 class ConvBlock(nn.Module):
@@ -144,7 +220,6 @@ class Upsampler(nn.Sequential):
                  output_channels: int = 1,
                  batchnorm: bool = True,
                  activation: str = "lrelu",
-                 activation_out: bool = True,
                  upsampling_mode: str = "bilinear",
                  ) -> None:
         """
@@ -153,8 +228,6 @@ class Upsampler(nn.Sequential):
         super(Upsampler, self).__init__()
         if layers_per_block is None:
             layers_per_block = [2, 2, 1]
-        if activation_out:
-            a_out = nn.Sigmoid() if output_channels == 1 else nn.Softmax(-1)
 
         nfilters = input_channels
         for i, layers in enumerate(layers_per_block):
@@ -170,8 +243,6 @@ class Upsampler(nn.Sequential):
         out = ConvBlock(ndim, 1, nfilters // (i+1), output_channels,
                         1, 1, 0, activation=None)
         self.add_module("output_layer", out)
-        if activation_out:
-            self.add_module("output_activation", a_out)
 
 
 class features_to_latent(nn.Module):
