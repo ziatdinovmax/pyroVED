@@ -262,7 +262,7 @@ class jtrVAE(nn.Module):
                 z = [self.grid.expand(z[0].shape[0], *self.grid.shape)] + z
             x_decoded.append(generator(z))
         return torch.cat(x_decoded)
-    
+
     def decode(self, z: torch.Tensor, y: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
         Decodes a batch of latent coordinates
