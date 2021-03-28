@@ -28,7 +28,7 @@ class convEncoderNet(nn.Module):
                  input_dim: Tuple[int],
                  input_channels: int = 1,
                  latent_dim: int = 2,
-                 layers_per_block: List[int] = [1, 2, 2],
+                 layers_per_block: List[int] = None,
                  hidden_dim: int = 32,
                  batchnorm: bool = True,
                  activation: str = "lrelu",
@@ -39,6 +39,8 @@ class convEncoderNet(nn.Module):
         Initializes encoder module
         """
         super(convEncoderNet, self).__init__()
+        if layers_per_block is None:
+            layers_per_block = [1, 2, 2]
         output_dim = (tt(input_dim) // 2**len(layers_per_block)).tolist()
         output_channels = hidden_dim * len(layers_per_block)
         self.latent_dim = latent_dim
@@ -68,8 +70,8 @@ class convDecoderNet(nn.Module):
                  latent_dim: int,
                  output_dim: int,
                  output_channels: int = 1,
-                 layers_per_block: List[int] = [1, 2, 2],
-                  hidden_dim: int = 96,
+                 layers_per_block: List[int] = None,
+                 hidden_dim: int = 96,
                  batchnorm: bool = True,
                  activation: str = "lrelu",
                  sigmoid_out: bool = True,
@@ -79,6 +81,8 @@ class convDecoderNet(nn.Module):
         Initializes decoder module
         """
         super(convDecoderNet, self).__init__()
+        if layers_per_block is None:
+            layers_per_block = [2, 2, 1]
         input_dim = (tt(output_dim) // 2**len(layers_per_block)).tolist()
         self.latent2features = latent_to_features(
             latent_dim, [hidden_dim, *input_dim])
