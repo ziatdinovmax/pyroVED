@@ -35,7 +35,7 @@ class VED(torch.nn.Module):
                  num_layers_e: int = None,
                  num_layers_d: int = None,
                  activation: str = "lrelu",
-                 batchnorm: bool = True,
+                 batchnorm: bool = False,
                  sampler_d: str = "bernoulli",
                  sigmoid_d: bool = True,
                  seed: int = 1,
