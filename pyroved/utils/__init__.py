@@ -1,3 +1,6 @@
+"""
+Utility functions
+"""
 from .coord import *
 from .prob import *
 from .data import *

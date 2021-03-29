@@ -1,3 +1,11 @@
+"""
+trvae.py
+=========
+
+Variational autoencoder with rotational and/or translational invariances
+
+Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
+"""
 from typing import Optional, Tuple, Type, Union
 
 import pyro

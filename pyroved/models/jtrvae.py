@@ -1,3 +1,13 @@
+"""
+jtrvae.py
+=========
+
+Variational autoencoder for learning (jointly) discrete and
+continuous latent representations on data with arbitrary rotations
+and/or translations
+
+Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
+"""
 from typing import Optional, Tuple, Union, Type
 
 import pyro

@@ -1,3 +1,12 @@
+"""
+sstrvae.py
+=========
+
+Semi-supervised variational autoencoder for data
+with positional (rotation+translation) disorder
+
+Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
+"""
 from typing import Optional, Tuple, Union, Type
 
 import pyro
