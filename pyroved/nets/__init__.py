@@ -1,6 +1,5 @@
 """
-Fully-connected and convolutional neural networks
-used for encoder and decoder parts of VAEs and VEDs
+Fully-connected and convolutional neural network modules
 """
 from .conv import (ConvBlock, FeatureExtractor, UpsampleBlock, Upsampler,
                    convDecoderNet, convEncoderNet)
