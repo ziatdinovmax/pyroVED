@@ -1,0 +1,206 @@
+"""
+ved.py
+=========
+
+Variational encoder-decoder model (input and output are different)
+
+Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
+"""
+from typing import Tuple, Type, Union
+
+import pyro
+import pyro.distributions as dist
+import torch
+
+from ..nets import convEncoderNet, convDecoderNet
+from ..utils import (generate_latent_grid, get_sampler,
+                     init_dataloader, plot_img_grid, plot_spect_grid,
+                     set_deterministic_mode)
+
+
+class VED(torch.nn.Module):
+    """
+    Variational encoder-decoder model where the inputs and outputs are not identical.
+    This model can be used for realizing im2spec and spec2im type of models where
+    1D spectra are predicted from image data and vice versa.
+    """
+    def __init__(self,
+                 input_dim: Tuple[int],
+                 output_dim: Tuple[int],
+                 input_channels: int = 1,
+                 output_channels: int = 1,
+                 latent_dim: int = 2,
+                 hidden_dim_e: int = 128,
+                 hidden_dim_d: int = 128,
+                 num_layers_e: int = 2,
+                 num_layers_d: int = 2,
+                 activation: str = "lrelu",
+                 batchnorm: bool = True,
+                 sampler_d: str = "bernoulli",
+                 sigmoid_d: bool = True,
+                 seed: int = 1,
+                 **kwargs: float
+                 ) -> None:
+        """
+        Initializes VED's modules and parameters
+        """
+        super(VED, self).__init__()
+        pyro.clear_param_store()
+        set_deterministic_mode(seed)
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.ndim = len(output_dim)
+        self.encoder_net = convEncoderNet(
+            input_dim, input_channels, latent_dim,
+            num_layers_e, hidden_dim_e,
+            batchnorm, activation)
+        self.decoder_net = convDecoderNet(
+            latent_dim, output_dim, output_channels,
+            num_layers_d, hidden_dim_d,
+            batchnorm, activation, sigmoid_d)
+        self.sampler_d = get_sampler(sampler_d, **kwargs)
+        self.z_dim = latent_dim
+        self.to(self.device)
+
+    def model(self,
+              x: torch.Tensor = None,
+              y: torch.Tensor = None,
+              **kwargs: float) -> torch.Tensor:
+        """
+        Defines the model p(y|z)p(z)
+        """
+        # register PyTorch module `decoder_net` with Pyro
+        pyro.module("decoder_net", self.decoder_net)
+        # KLD scale factor (see e.g. https://openreview.net/pdf?id=Sy2fzU9gl)
+        beta = kwargs.get("scale_factor", 1.)
+        with pyro.plate("data", x.shape[0]):
+            # setup hyperparameters for prior p(z)
+            z_loc = x.new_zeros(torch.Size((x.shape[0], self.z_dim)))
+            z_scale = x.new_ones(torch.Size((x.shape[0], self.z_dim)))
+            # sample from prior (value will be sampled by guide when computing the ELBO)
+            with pyro.poutine.scale(scale=beta):
+                z = pyro.sample("z", dist.Normal(z_loc, z_scale).to_event(1))
+            # decode the latent code z
+            loc = self.decoder_net(z)
+            # score against actual images
+            pyro.sample(
+                "obs", self.sampler_d(loc.flatten(1)).to_event(1),
+                obs=y.flatten(1))
+
+    def guide(self,
+              x: torch.Tensor = None,
+              y: torch.Tensor = None,
+              **kwargs: float) -> torch.Tensor:
+        """
+        Defines the guide q(z|x)
+        """
+        # register PyTorch module `encoder_net` with Pyro
+        pyro.module("encoder_net", self.encoder_net)
+        # KLD scale factor (see e.g. https://openreview.net/pdf?id=Sy2fzU9gl)
+        beta = kwargs.get("scale_factor", 1.)
+        with pyro.plate("data", x.shape[0]):
+            # use the encoder to get the parameters used to define q(z|x)
+            z_loc, z_scale = self.encoder_net(x)
+            # sample the latent code z
+            with pyro.poutine.scale(scale=beta):
+                pyro.sample("z", dist.Normal(z_loc, z_scale).to_event(1))
+
+    def set_encoder(self, encoder_net: Type[torch.nn.Module]) -> None:
+        """
+        Sets a user-defined encoder network
+        """
+        self.encoder_z = encoder_net
+
+    def set_decoder(self, decoder_net: Type[torch.nn.Module]) -> None:
+        """
+        Sets a user-defined decoder network
+        """
+        self.decoder = decoder_net
+
+    def _encode(self,
+                x_new: Union[torch.Tensor, torch.utils.data.DataLoader],
+                **kwargs: int) -> torch.Tensor:
+        """
+        Encodes data using a trained inference (encoder) network
+        in a batch-by-batch fashion
+        """
+        def inference(x_i) -> torch.Tensor:
+            with torch.no_grad():
+                encoded = self.encoder_net(x_i)
+            encoded = torch.cat(encoded, -1).cpu()
+            return encoded
+
+        if not isinstance(x_new, (torch.Tensor, torch.utils.data.DataLoader)):
+            raise TypeError("Pass data as torch.Tensor or DataLoader object")
+        if isinstance(x_new, torch.Tensor):
+            x_new = init_dataloader(x_new, shuffle=False, **kwargs)
+        z_encoded = []
+        for (x_i,) in x_new:
+            z_encoded.append(inference(x_i.to(self.device)))
+        return torch.cat(z_encoded)
+
+    def encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
+        """
+        Encodes data using a trained inference (encoder) network
+        (this is basically a wrapper for self._encode)
+        """
+        z = self._encode(x_new)
+        z_loc, z_scale = z.split(self.z_dim, 1)
+        return z_loc, z_scale
+
+    def _decode(self, z_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
+        """
+        Decodes latent coordiantes in a batch-by-batch fashion
+        """
+        def generator(z: torch.Tensor) -> torch.Tensor:
+            with torch.no_grad():
+                loc = self.decoder_net(*z)
+            return loc.cpu()
+
+        z_new = init_dataloader(z_new, shuffle=False, **kwargs)
+        x_decoded = []
+        for z in z_new:
+            x_decoded.append(generator(z))
+        return torch.cat(x_decoded)
+
+    def decode(self,
+               z: torch.Tensor,
+               y: torch.Tensor = None,
+               **kwargs: int) -> torch.Tensor:
+        """
+        Decodes a batch of latent coordnates
+        """
+        z = z.to(self.device)
+        loc = self._decode(z, **kwargs)
+        return loc
+
+    def manifold2d(self, d: int, plot: bool = True,
+                   **kwargs: Union[str, int]) -> torch.Tensor:
+        """
+        Plots a learned latent manifold in the image space
+        """
+        z, (grid_x, grid_y) = generate_latent_grid(d)
+        z = z.to(self.device)
+        with torch.no_grad():
+            loc = self.decoder_net(z).cpu()
+        if plot:
+            if self.ndim == 2:
+                plot_img_grid(
+                    loc, d,
+                    extent=[grid_x.min(), grid_x.max(), grid_y.min(), grid_y.max()],
+                    **kwargs)
+            elif self.ndim == 1:
+                plot_spect_grid(loc, d, **kwargs)
+        return loc
+
+    def save_weights(self, filepath: str) -> None:
+        """
+        Saves trained weights of encoder and decoder neural networks
+        """
+        torch.save(self.state_dict(), filepath)
+
+    def load_weights(self, filepath: str) -> None:
+        """
+        Loads saved weights of encoder and decoder neural networks
+        """
+        weights = torch.load(filepath, map_location=self.device)
+        self.load_state_dict(weights)
