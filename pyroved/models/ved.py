@@ -175,6 +175,27 @@ class VED(torch.nn.Module):
         loc = self._decode(z, **kwargs)
         return loc
 
+    def predict(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
+        """Forward prediction (encode -> sample -> decode)"""
+
+        def forward_(x_i) -> torch.Tensor:
+            with torch.no_grad():
+                encoded = self.encoder_net(x_i)
+                encoded = torch.cat(encoded, -1)
+                z_mu, z_sig = encoded.split(self.z_dim, 1)
+                z_samples = dist.Normal(z_mu, z_sig).rsample(sample_shape=(30,))
+                loc = self.decoder_net(z_samples)
+            return loc.cpu()
+
+        if not isinstance(x_new, (torch.Tensor, torch.utils.data.DataLoader)):
+            raise TypeError("Pass data as torch.Tensor or DataLoader object")
+        if isinstance(x_new, torch.Tensor):
+            x_new = init_dataloader(x_new, shuffle=False, **kwargs)
+        prediction = []
+        for (x_i,) in x_new:
+            prediction.append(forward_(x_i.to(self.device)))
+        return torch.cat(prediction)
+
     def manifold2d(self, d: int, plot: bool = True,
                    **kwargs: Union[str, int]) -> torch.Tensor:
         """
