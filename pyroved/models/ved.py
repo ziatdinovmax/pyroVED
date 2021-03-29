@@ -143,6 +143,7 @@ class VED(torch.nn.Module):
         Encodes data using a trained inference (encoder) network
         (this is basically a wrapper for self._encode)
         """
+        self.eval()
         z = self._encode(x_new)
         z_loc, z_scale = z.split(self.z_dim, 1)
         return z_loc, z_scale
@@ -169,6 +170,7 @@ class VED(torch.nn.Module):
         """
         Decodes a batch of latent coordnates
         """
+        self.eval()
         z = z.to(self.device)
         loc = self._decode(z, **kwargs)
         return loc
@@ -178,6 +180,7 @@ class VED(torch.nn.Module):
         """
         Plots a learned latent manifold in the image space
         """
+        self.eval()
         z, (grid_x, grid_y) = generate_latent_grid(d)
         z = z.to(self.device)
         with torch.no_grad():
