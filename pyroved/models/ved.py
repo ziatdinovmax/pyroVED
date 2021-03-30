@@ -6,7 +6,7 @@ Variational encoder-decoder model (input and output are different)
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
-from typing import Tuple, Type, Union
+from typing import Tuple, Type, Union, List
 
 import pyro
 import pyro.distributions as dist
@@ -23,6 +23,57 @@ class VED(torch.nn.Module):
     Variational encoder-decoder model where the inputs and outputs are not identical.
     This model can be used for realizing im2spec and spec2im type of models where
     1D spectra are predicted from image data and vice versa.
+
+    Args:
+        input_dim:
+            Dimensionality of the input data; use (h x w) for images
+            or (length,) for spectra.
+        output_dim:
+            Dimensionality of the input data; use (h x w) for images
+            or (length,) for spectra. Doesn't have to match the input data.
+        input_channels:
+            Number of input channels (Default: 1)
+        output_channels:
+            Number of output channels (Default: 1)
+        latent_dim:
+            Number of latent dimensions.
+        hidden_dim_e:
+            Number of hidden units (convolutional filters) for each layer in
+            the first block of the encoder NN. The number of units in the
+            consecutive blocks is defined as hidden_dim_e * n,
+            where n = 2, 3, ..., n_blocks (Default: 32).
+        hidden_dim_e:
+            Number of hidden units (convolutional filters) for each layer in
+            the first block of the decoder NN. The number of units in the
+            consecutive blocks is defined as hidden_dim_e // n,
+            where n = 2, 3, ..., n_blocks (Default: 32).
+        num_layers_e:
+            List with numbers of layers per each block of the encoder NN.
+            Defaults to [1, 2, 2] if none is specified.
+        num_layers_d:
+            List with numbers of layers per each block of the decoder NN.
+            Defaults to [2, 2, 1] if none is specified.
+        activation:
+            Non-linear activation for inner layers of encoder and decoder.
+            The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
+            hyberbolic tangent ('tanh'), and softplus ('softplus')
+            The default activation is 'tanh'.
+        batchnorm:
+            Batch normalization attached to each convolutional layer
+            after non-linear activation (except for layers with 1x1 filters)
+            in the encoder and decoder NNs (Default: False)
+        sampler_d:
+            Decoder sampler, as defined as p(x|z) = sampler(decoder(z)).
+            The available samplers are 'bernoulli', 'continuous_bernoulli',
+            and 'gaussian' (Default: 'bernoulli').
+        sigmoid_d:
+            Sigmoid activation for the decoder output (Default: True)
+        seed:
+            Seed used in torch.manual_seed(seed) and
+            torch.cuda.manual_seed_all(seed)
+        kwargs:
+            Additional keyword argument is *decoder_sig* for setting sigma
+            in the decoder's sampler when it is chosen to be a "gaussian".
     """
     def __init__(self,
                  input_dim: Tuple[int],
@@ -32,8 +83,8 @@ class VED(torch.nn.Module):
                  latent_dim: int = 2,
                  hidden_dim_e: int = 32,
                  hidden_dim_d: int = 96,
-                 num_layers_e: int = None,
-                 num_layers_d: int = None,
+                 num_layers_e: List[int] = None,
+                 num_layers_d: List[int] = None,
                  activation: str = "lrelu",
                  batchnorm: bool = False,
                  sampler_d: str = "bernoulli",

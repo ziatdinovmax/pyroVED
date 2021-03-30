@@ -40,12 +40,16 @@ class trVAE(nn.Module):
             Number of classes (if any) for class-conditioned (t)(r)VAE.
         hidden_dim_e:
             Number of hidden units per each layer in encoder (inference network).
+            The default value is 128.
         hidden_dim_d:
             Number of hidden units per each layer in decoder (generator network).
+            The default value is 128.
         num_layers_e:
             Number of layers in encoder (inference network).
+            The default value is 2.
         num_layers_d:
             Number of layers in decoder (generator network).
+            The default value is 2.
         activation:
             Non-linear activation for inner layers of encoder and decoder.
             The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
