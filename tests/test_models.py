@@ -17,10 +17,10 @@ sys.path.append("../../")
 from pyroved import models, utils
 
 
-def get_traces(model, x):
-    guide_trace = pyro.poutine.trace(model.guide).get_trace(x)
+def get_traces(model, *args):
+    guide_trace = pyro.poutine.trace(model.guide).get_trace(*args)
     model_trace = pyro.poutine.trace(
-        pyro.poutine.replay(model.model, trace=guide_trace)).get_trace(x)
+        pyro.poutine.replay(model.model, trace=guide_trace)).get_trace(*args)
     return guide_trace, model_trace
 
 
@@ -72,6 +72,35 @@ def test_trvae_sites_fn(data_dim, coord):
     guide_trace, model_trace = get_traces(model, x)
     assert_(isinstance(model_trace.nodes["latent"]['fn'].base_dist, dist.Normal))
     assert_(isinstance(guide_trace.nodes["latent"]['fn'].base_dist, dist.Normal))
+    assert_(isinstance(model_trace.nodes["obs"]['fn'].base_dist, dist.Bernoulli))
+
+
+@pytest.mark.parametrize("input_dim, output_dim",
+                         [((8,), (8, 8)), ((8, 8), (8,)),
+                          ((8,), (8,)), ((8, 8), (8, 8))])
+def test_ved_sites_dims(input_dim, output_dim):
+    x = torch.randn(2, 1, *input_dim)
+    y = torch.randn(2, 1, *output_dim)
+    model = models.VED(input_dim, output_dim)
+    guide_trace, model_trace = get_traces(model, x, y)
+    assert_equal(model_trace.nodes["z"]['value'].shape,
+                 (x.shape[0], 2))
+    assert_equal(guide_trace.nodes["z"]['value'].shape,
+                 (x.shape[0], 2))
+    assert_equal(model_trace.nodes["obs"]['value'].shape,
+                 (y.shape[0], torch.prod(tt(output_dim)).item()))
+
+
+@pytest.mark.parametrize("input_dim, output_dim",
+                         [((8,), (8, 8)), ((8, 8), (8,)),
+                          ((8,), (8,)), ((8, 8), (8, 8))])
+def test_ved_sites_fn(input_dim, output_dim):
+    x = torch.randn(2, 1, *input_dim)
+    y = torch.randn(2, 1, *output_dim)
+    model = models.VED(input_dim, output_dim)
+    guide_trace, model_trace = get_traces(model, x, y)
+    assert_(isinstance(model_trace.nodes["z"]['fn'].base_dist, dist.Normal))
+    assert_(isinstance(guide_trace.nodes["z"]['fn'].base_dist, dist.Normal))
     assert_(isinstance(model_trace.nodes["obs"]['fn'].base_dist, dist.Bernoulli))
 
 
@@ -201,6 +230,20 @@ def test_trvae_decoder_sampler(sampler, expected_dist):
     "sampler, expected_dist",
     [("gaussian", dist.Normal), ("bernoulli", dist.Bernoulli),
      ("continuous_bernoulli", dist.ContinuousBernoulli)])
+def test_ved_decoder_sampler(sampler, expected_dist):
+    input_dim = (8, 8)
+    output_dim = (8,)
+    x = torch.randn(2, 1, *input_dim)
+    y = torch.randn(2, 1, *output_dim)
+    model = models.VED(input_dim, output_dim, sampler_d=sampler)
+    _, model_trace = get_traces(model, x, y)
+    assert_(isinstance(model_trace.nodes["obs"]['fn'].base_dist, expected_dist))
+
+
+@pytest.mark.parametrize(
+    "sampler, expected_dist",
+    [("gaussian", dist.Normal), ("bernoulli", dist.Bernoulli),
+     ("continuous_bernoulli", dist.ContinuousBernoulli)])
 def test_jtrvae_decoder_sampler(sampler, expected_dist):
     data_dim = (2, 8, 8)
     x = torch.randn(*data_dim)
@@ -224,9 +267,9 @@ def test_sstrvae_decoder_sampler(sampler, expected_dist):
 @pytest.mark.parametrize("vae_model", [models.jtrVAE, models.sstrVAE])
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
 @pytest.mark.parametrize("data_dim", [(8,), (8, 8), (8,), (8, 8)])
-def test_jtrvae_decode(vae_model, data_dim, coord):
+def test_jsstrvae_decode(vae_model, data_dim, coord):
     if coord > 0:
-        coord = coord if len(data_dim[1:]) > 1 else 1
+        coord = coord if len(data_dim) > 1 else 1
     model = vae_model(data_dim, 2, 3, coord=coord)
     z_coord = torch.tensor([0.0, 0.0]).unsqueeze(0)
     y = utils.to_onehot(torch.tensor(0).unsqueeze(0), 3)
@@ -238,18 +281,28 @@ def test_jtrvae_decode(vae_model, data_dim, coord):
 @pytest.mark.parametrize("data_dim", [(8,), (8, 8)])
 def test_trvae_decode(data_dim, coord):
     if coord > 0:
-        coord = coord if len(data_dim[1:]) > 1 else 1
+        coord = coord if len(data_dim) > 1 else 1
     model = models.trVAE(data_dim, coord=coord)
     z_coord = torch.tensor([0.0, 0.0]).unsqueeze(0)
     decoded = model.decode(z_coord)
     assert_equal(decoded.squeeze().shape, data_dim)
 
 
+@pytest.mark.parametrize("input_dim, output_dim",
+                         [((8,), (8, 8)), ((8, 8), (8,)),
+                          ((8,), (8,)), ((8, 8), (8, 8))])
+def test_ved_decode(input_dim, output_dim):
+    z_coord = torch.tensor([0.0, 0.0]).unsqueeze(0)
+    model = models.VED(input_dim, output_dim)
+    decoded = model.decode(z_coord)
+    assert_equal(decoded.squeeze().shape, output_dim)
+
+
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
 @pytest.mark.parametrize("data_dim", [(8,), (8, 8)])
 def test_ctrvae_decode(data_dim, coord):
     if coord > 0:
-        coord = coord if len(data_dim[1:]) > 1 else 1
+        coord = coord if len(data_dim) > 1 else 1
     model = models.trVAE(data_dim, num_classes=3, coord=coord)
     z_coord = torch.tensor([0.0, 0.0]).unsqueeze(0)
     y = utils.to_onehot(torch.tensor(0).unsqueeze(0), 3)
@@ -266,6 +319,17 @@ def test_trvae_encode(data_dim, coord):
     model = models.trVAE(data_dim[1:], 2, coord=coord)
     encoded = model.encode(x)
     assert_equal(encoded[0].shape, (data_dim[0], coord+2))
+    assert_equal(encoded[0].shape, encoded[1].shape)
+
+
+@pytest.mark.parametrize("input_dim, output_dim",
+                         [((8,), (8, 8)), ((8, 8), (8,)),
+                          ((8,), (8,)), ((8, 8), (8, 8))])
+def test_ved_encode(input_dim, output_dim):
+    x = torch.randn(2, 1, *input_dim)
+    model = models.VED(input_dim, output_dim)
+    encoded = model.encode(x)
+    assert_equal(encoded[0].shape, (x.shape[0], 2))
     assert_equal(encoded[0].shape, encoded[1].shape)
 
 
@@ -293,6 +357,37 @@ def test_sstrvae_encode(data_dim, coord):
     assert_equal(encoded[0].shape, encoded[1].shape)
     assert_equal(encoded[0].shape, (data_dim[0], coord+2))
     assert_equal(encoded[2].shape, (data_dim[0],))
+
+
+@pytest.mark.parametrize("num_classes", [0, 2, 3])
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(8,), (8, 8)])
+def test_trvae_manifold2d(data_dim, coord, num_classes):
+    if coord > 0:
+        coord = coord if len(data_dim) > 1 else 1
+    model = models.trVAE(data_dim, num_classes=num_classes, coord=coord)
+    decoded_grid = model.manifold2d(4, plot=False)
+    assert_equal(decoded_grid.squeeze().shape, (16, *data_dim))
+
+
+@pytest.mark.parametrize("input_dim, output_dim",
+                         [((8,), (8, 8)), ((8, 8), (8,)),
+                          ((8,), (8,)), ((8, 8), (8, 8))])
+def test_ved_manifold2d(input_dim, output_dim):
+    model = models.VED(input_dim, output_dim)
+    decoded_grid = model.manifold2d(4, plot=False)
+    assert_equal(decoded_grid.squeeze().shape, (16, *output_dim))
+
+
+@pytest.mark.parametrize("vae_model", [models.jtrVAE, models.sstrVAE])
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(8,), (8, 8)])
+def test_jsstrvae_manifold2d(vae_model, data_dim, coord):
+    if coord > 0:
+        coord = coord if len(data_dim) > 1 else 1
+    model = vae_model(data_dim, 2, 3, coord=coord)
+    decoded_grid = model.manifold2d(4, plot=False)
+    assert_equal(decoded_grid.squeeze().shape, (16, *data_dim))
 
 
 @pytest.fixture(scope='session')

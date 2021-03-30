@@ -9,12 +9,13 @@ def plot_img_grid(imgdata: torch.Tensor, d: int,
     """
     Plots a square grid of images
     """
-    grid = make_grid(imgdata[:, None], nrow=d,
+    imgdata = imgdata[:, None] if imgdata.ndim == 3 else imgdata
+    grid = make_grid(imgdata, nrow=d,
                      padding=kwargs.get("padding", 2),
                      pad_value=kwargs.get("pad_value", 0))
 
     plt.figure(figsize=(8, 8))
-    plt.imshow(grid[0], cmap=kwargs.get("cmap", "gnuplot"),
+    plt.imshow(grid[0].squeeze(), cmap=kwargs.get("cmap", "gnuplot"),
                origin=kwargs.get("origin", "upper"),
                extent=kwargs.get("extent"))
     plt.xticks(fontsize=14)
@@ -24,10 +25,13 @@ def plot_img_grid(imgdata: torch.Tensor, d: int,
     plt.show()
 
 
-def plot_spect_grid(spectra: torch.Tensor, d: int):  # TODO: Add 'axes' and 'extent'
+def plot_spect_grid(spectra: torch.Tensor, d: int, **kwargs: List[float]):  # TODO: Add 'axes' and 'extent'
     _, axes = plt.subplots(d, d, figsize=(8, 8),
                            subplot_kw={'xticks': [], 'yticks': []},
                            gridspec_kw=dict(hspace=0.1, wspace=0.1))
+    ylim = kwargs.get("ylim")
     for ax, y in zip(axes.flat, spectra):
-        ax.plot(y)
+        ax.plot(y.squeeze())
+        if ylim:
+            ax.set_ylim(*ylim)
     plt.show()

@@ -68,3 +68,20 @@ def test_auxsvi_trainer(data_dim, coord):
     weights_after = vae.state_dict()
     assert_(not torch.isnan(tt(trainer.history["training_loss"])).any())
     assert_(not assert_weights_equal(weights_before, weights_after))
+
+
+@pytest.mark.parametrize("input_dim, output_dim",
+                         [((8,), (8, 8)), ((8, 8), (8,)),
+                          ((8,), (8,)), ((8, 8), (8, 8))])
+def test_svi_trainer_ved(input_dim, output_dim):
+    train_data_x = torch.randn(5, 1, *input_dim)
+    train_data_y = torch.randn(5, 1, *output_dim)
+    train_loader = utils.init_dataloader(train_data_x, train_data_y, batch_size=2)
+    vae = models.VED(input_dim, output_dim)
+    trainer = trainers.SVItrainer(vae)
+    weights_before = dc(vae.state_dict())
+    for _ in range(2):
+        trainer.step(train_loader)
+    weights_after = vae.state_dict()
+    assert_(not torch.isnan(tt(trainer.loss_history["training_loss"])).any())
+    assert_(not assert_weights_equal(weights_before, weights_after))
