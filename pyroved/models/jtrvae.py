@@ -8,22 +8,21 @@ and/or translations
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
-from typing import Optional, Tuple, Union, Type
+from typing import Optional, Tuple, Union
 
 import pyro
 import pyro.distributions as dist
 import torch
-import torch.nn as nn
 import torch.tensor as tt
 
+from .base import baseVAE
 from ..nets import fcDecoderNet, jfcEncoderNet, sDecoderNet
 from ..utils import (generate_grid, get_sampler, plot_img_grid,
                      plot_spect_grid, set_deterministic_mode,
-                     transform_coordinates, to_onehot, init_dataloader,
-                     generate_latent_grid)
+                     transform_coordinates, to_onehot, generate_latent_grid)
 
 
-class jtrVAE(nn.Module):
+class jtrVAE(baseVAE):
     """
     Variational autoencoder for learning (jointly) discrete and
     continuous latent representations on data with arbitrary rotations
@@ -99,18 +98,17 @@ class jtrVAE(nn.Module):
         super(jtrVAE, self).__init__()
         pyro.clear_param_store()
         set_deterministic_mode(seed)
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.ndim = len(data_dim)
         self.data_dim = data_dim
         if self.ndim == 1 and coord > 0:
             coord = 1
-        self.encoder_net = jfcEncoderNet(
+        self.encoder_z = jfcEncoderNet(
             data_dim, latent_dim+coord, discrete_dim, hidden_dim_e,
             num_layers_e, activation, softplus_out=True)
         if coord not in [0, 1, 2, 3]:
             raise ValueError("'coord' argument must be 0, 1, 2 or 3")
         dnet = sDecoderNet if coord in [1, 2, 3] else fcDecoderNet
-        self.decoder_net = dnet(
+        self.decoder = dnet(
             data_dim, latent_dim, discrete_dim, hidden_dim_d,
             num_layers_d, activation, sigmoid_out=sigmoid_d, unflat=False)
         self.sampler_d = get_sampler(sampler_d, **kwargs)
@@ -131,8 +129,8 @@ class jtrVAE(nn.Module):
         """
         Defines the model p(x|z,c)p(z)p(c)
         """
-        # register PyTorch module `decoder_net` with Pyro
-        pyro.module("decoder_net", self.decoder_net)
+        # register PyTorch module `decoder` with Pyro
+        pyro.module("decoder", self.decoder)
         # KLD scale factor (see e.g. https://openreview.net/pdf?id=Sy2fzU9gl)
         beta = kwargs.get("scale_factor", 1.)
         reshape_ = torch.prod(tt(x.shape[1:])).item()
@@ -160,7 +158,7 @@ class jtrVAE(nn.Module):
             z = [z, z_disc.reshape(-1, self.discrete_dim) if self.coord > 0 else z_disc]
             # decode the latent code z together with the transformed coordinates (if any)
             dec_args = (x_coord_prime, z) if self.coord else (z,)
-            loc = self.decoder_net(*dec_args)
+            loc = self.decoder(*dec_args)
             # score against actual images/spectra
             loc = loc.view(*z_disc.shape[:-1], reshape_)
             pyro.sample(
@@ -174,13 +172,13 @@ class jtrVAE(nn.Module):
         """
         Defines the guide q(z,c|x)
         """
-        # register PyTorch module `encoder_net` with Pyro
-        pyro.module("encoder_net", self.encoder_net)
+        # register PyTorch module `encoder_z` with Pyro
+        pyro.module("encoder_z", self.encoder_z)
         # KLD scale factor (see e.g. https://openreview.net/pdf?id=Sy2fzU9gl)
         beta = kwargs.get("scale_factor", 1.)
         with pyro.plate("data"):
             # use the encoder to get the parameters used to define q(z,c|x)
-            z_loc, z_scale, alpha = self.encoder_net(x)
+            z_loc, z_scale, alpha = self.encoder_z(x)
             # sample the latent code z
             with pyro.poutine.scale(scale=beta):
                 pyro.sample("latent_cont", dist.Normal(z_loc, z_scale).to_event(1))
@@ -211,40 +209,6 @@ class jtrVAE(nn.Module):
             zs = zs[:, 1:]
         return phi, dx, zs
 
-    def set_encoder(self, encoder_net: Type[torch.nn.Module]) -> None:
-        """
-        Sets a user-defined encoder network
-        """
-        self.encoder_z = encoder_net
-
-    def set_decoder(self, decoder_net: Type[torch.nn.Module]) -> None:
-        """
-        Sets a user-defined decoder network
-        """
-        self.decoder = decoder_net
-
-    def _encode(self,
-                x_new: Union[torch.Tensor, torch.utils.data.DataLoader],
-                **kwargs: int) -> torch.Tensor:
-        """
-        Encodes data using a trained inference (encoder) network
-        in a batch-by-batch fashion
-        """
-        def inference(x_i) -> torch.Tensor:
-            with torch.no_grad():
-                encoded = self.encoder_net(x_i)
-            encoded = torch.cat(encoded, -1).cpu()
-            return encoded
-
-        if not isinstance(x_new, (torch.Tensor, torch.utils.data.DataLoader)):
-            raise TypeError("Pass data as torch.Tensor or DataLoader object")
-        if isinstance(x_new, torch.Tensor):
-            x_new = init_dataloader(x_new, shuffle=False, **kwargs)
-        z_encoded = []
-        for (x_i,) in x_new:
-            z_encoded.append(inference(x_i.to(self.device)))
-        return torch.cat(z_encoded)
-
     def encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
         Encodes data using a trained inference (encoder) network
@@ -255,23 +219,6 @@ class jtrVAE(nn.Module):
         alphas = z[:, 2*self.z_dim:]
         _, pred_labels = torch.max(alphas, 1)
         return z_loc, z_scale, pred_labels
-
-    def _decode(self, z_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
-        """
-        Decodes latent coordiantes in a batch-by-batch fashion
-        """
-        def generator(z: torch.Tensor) -> torch.Tensor:
-            with torch.no_grad():
-                loc = self.decoder_net(*z)
-            return loc.cpu()
-
-        z_new = init_dataloader(z_new, shuffle=False, **kwargs)
-        x_decoded = []
-        for z in z_new:
-            if self.coord > 0:
-                z = [self.grid.expand(z[0].shape[0], *self.grid.shape)] + z
-            x_decoded.append(generator(z))
-        return torch.cat(x_decoded)
 
     def decode(self, z: torch.Tensor, y: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
@@ -295,7 +242,7 @@ class jtrVAE(nn.Module):
             grid = [self.grid.expand(z[0].shape[0], *self.grid.shape)]
             z = grid + z
         with torch.no_grad():
-            loc = self.decoder_net(*z).cpu()
+            loc = self.decoder(*z).cpu()
         loc = loc.view(-1, *self.data_dim)
         if plot:
             if self.ndim == 2:
@@ -306,16 +253,3 @@ class jtrVAE(nn.Module):
             elif self.ndim == 1:
                 plot_spect_grid(loc, d, **kwargs)
         return loc
-
-    def save_weights(self, filepath: str) -> None:
-        """
-        Saves trained weights of encoder and decoder neural networks
-        """
-        torch.save(self.state_dict(), filepath)
-
-    def load_weights(self, filepath: str) -> None:
-        """
-        Loads saved weights of encoder and decoder neural networks
-        """
-        weights = torch.load(filepath, map_location=self.device)
-        self.load_state_dict(weights)

@@ -12,16 +12,16 @@ from typing import Optional, Tuple, Union, Type
 import pyro
 import pyro.distributions as dist
 import torch
-import torch.nn as nn
 import torch.tensor as tt
 
+from .base import baseVAE
 from ..nets import fcDecoderNet, fcEncoderNet, sDecoderNet, fcClassifierNet
 from ..utils import (generate_grid, get_sampler, plot_img_grid,
                      plot_spect_grid, set_deterministic_mode, to_onehot,
                      transform_coordinates, init_dataloader, generate_latent_grid)
 
 
-class sstrVAE(nn.Module):
+class sstrVAE(baseVAE):
     """
     Semi-supervised variational autoencoder with rotational and/or translational invariance
 
@@ -97,7 +97,6 @@ class sstrVAE(nn.Module):
         set_deterministic_mode(seed)
         if coord not in [0, 1, 2, 3]:
             raise ValueError("'coord' argument must be 0, 1, 2 or 3")
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.ndim = len(data_dim)
         if self.ndim == 1 and coord > 0:
             coord = 1
@@ -235,18 +234,6 @@ class sstrVAE(nn.Module):
         """
         pass
 
-    def set_encoder(self, encoder_net: Type[torch.nn.Module]) -> None:
-        """
-        Sets a user-defined encoder network
-        """
-        self.encoder_z = encoder_net
-
-    def set_decoder(self, decoder_net: Type[torch.nn.Module]) -> None:
-        """
-        Sets a user-defined decoder network
-        """
-        self.decoder = decoder_net
-
     def set_classifier(self, cls_net: Type[torch.nn.Module]) -> None:
         """
         Sets a user-defined classification network
@@ -271,33 +258,6 @@ class sstrVAE(nn.Module):
             y_predicted.append(classify(x_i.to(self.device)))
         return torch.cat(y_predicted)
 
-    def _encode(self,
-                x_new: torch.Tensor,
-                y: Optional[torch.Tensor] = None,
-                **kwargs: int) -> torch.Tensor:
-        """
-        Encodes data using a trained inference (encoder) network
-        in a batch-by-batch fashion
-        """
-        def inference(x_i, y_i) -> torch.Tensor:
-            with torch.no_grad():
-                encoded = self.encoder_z(torch.cat([x_i, y_i], dim=-1))
-            encoded = torch.cat(encoded, -1).cpu()
-            return encoded
-
-        if y is None:
-            y = self.classifier(x_new)
-        if y.ndim < 2:
-            y = to_onehot(y, self.num_classes)
-        xy_new = init_dataloader(x_new, y, shuffle=False, **kwargs)
-        z_encoded = []
-        for x_i, y_i in xy_new:
-            x_i = x_i.to(self.device)
-            y_i = y_i.to(self.device)
-            z_encoded.append(inference(x_i, y_i))
-        _, pred_labels = torch.max(y, 1)
-        return torch.cat(z_encoded), pred_labels.cpu()
-
     def encode(self,
                x_new: torch.Tensor,
                y: Optional[torch.Tensor] = None,
@@ -305,30 +265,14 @@ class sstrVAE(nn.Module):
         """
         Encodes data using a trained inference (encoder) network
         """
-        if isinstance(x_new, torch.utils.data.DataLoader):
-            x_new = x_new.dataset.tensors[0]
-        if isinstance(y, torch.utils.data.DataLoader):
-            y = y.dataset.tensors[0]
-        z, y_pred = self._encode(x_new, y, **kwargs)
+        if y is None:
+            y = self.classifier(x_new)
+        if y.ndim < 2:
+            y = to_onehot(y, self.num_classes)
+        z = self._encode(x_new, y, **kwargs)
         z_loc, z_scale = z.split(self.z_dim, 1)
+        _, y_pred = torch.max(y, 1)
         return z_loc, z_scale, y_pred
-
-    def _decode(self, z_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
-        """
-        Decodes latent coordiantes in a batch-by-batch fashion
-        """
-        def generator(z: torch.Tensor) -> torch.Tensor:
-            with torch.no_grad():
-                loc = self.decoder(*z)
-            return loc.cpu()
-
-        z_new = init_dataloader(z_new, shuffle=False, **kwargs)
-        x_decoded = []
-        for z in z_new:
-            if self.coord > 0:
-                z = [self.grid.expand(z[0].shape[0], *self.grid.shape)] + z
-            x_decoded.append(generator(z))
-        return torch.cat(x_decoded)
 
     def decode(self, z: torch.Tensor, y: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
@@ -365,16 +309,3 @@ class sstrVAE(nn.Module):
             elif self.ndim == 1:
                 plot_spect_grid(loc, d, **kwargs)
         return loc
-
-    def save_weights(self, filepath: str) -> None:
-        """
-        Saves trained weights of encoder(s) and decoder
-        """
-        torch.save(self.state_dict(), filepath)
-
-    def load_weights(self, filepath: str) -> None:
-        """
-        Loads saved weights of encoder(s) and decoder
-        """
-        weights = torch.load(filepath, map_location=self.device)
-        self.load_state_dict(weights)
