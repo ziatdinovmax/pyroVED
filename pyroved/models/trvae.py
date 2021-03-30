@@ -103,7 +103,6 @@ class trVAE(baseVAE):
         super(trVAE, self).__init__()
         pyro.clear_param_store()
         set_deterministic_mode(seed)
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.ndim = len(data_dim)
         if self.ndim == 1 and coord > 0:
             coord = 1

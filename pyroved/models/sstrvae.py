@@ -97,7 +97,6 @@ class sstrVAE(baseVAE):
         set_deterministic_mode(seed)
         if coord not in [0, 1, 2, 3]:
             raise ValueError("'coord' argument must be 0, 1, 2 or 3")
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.ndim = len(data_dim)
         if self.ndim == 1 and coord > 0:
             coord = 1
