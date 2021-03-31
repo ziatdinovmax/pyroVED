@@ -74,6 +74,14 @@ class VED(torch.nn.Module):
         kwargs:
             Additional keyword argument is *decoder_sig* for setting sigma
             in the decoder's sampler when it is chosen to be a "gaussian".
+
+    Example:
+
+    Initialize a VED model for predicting 1D spectra from 2D images
+
+    >>> input_dim = (32, 32) # image height and width
+    >>> output_dim = (16,) # spectrum length
+    >>> ved = VED(input_dim, output_dim, latent_dim=2)
     """
     def __init__(self,
                  input_dim: Tuple[int],
