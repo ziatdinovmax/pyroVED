@@ -43,11 +43,11 @@ class VED(baseVAE):
             the first block of the encoder NN. The number of units in the
             consecutive blocks is defined as hidden_dim_e * n,
             where n = 2, 3, ..., n_blocks (Default: 32).
-        hidden_dim_e:
+        hidden_dim_d:
             Number of hidden units (convolutional filters) for each layer in
             the first block of the decoder NN. The number of units in the
             consecutive blocks is defined as hidden_dim_e // n,
-            where n = 2, 3, ..., n_blocks (Default: 32).
+            where n = 2, 3, ..., n_blocks (Default: 96).
         num_layers_e:
             List with numbers of layers per each block of the encoder NN.
             Defaults to [1, 2, 2] if none is specified.
