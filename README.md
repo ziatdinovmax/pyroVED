@@ -4,7 +4,7 @@
 [![build](https://github.com/ziatdinovmax/pyroVED/actions/workflows/actions.yml/badge.svg)](https://github.com/ziatdinovmax/pyroVED/actions/workflows/actions.yml)
 [![PyPI version](https://badge.fury.io/py/pyroved.svg)](https://badge.fury.io/py/pyroved)
 
-pyroVED is an open-source pacakge built on top of the Pyro probabilistic programming language for applications of variational encoder-decoder models in spectral and image analysis. The currently available models include variational autoencoders with translational and/or rotational invariance for unsupervised, class-conditioned, and semi-supervised learning, as well as *im2spec*-type models for predicting spectra from images and vice versa.
+pyroVED is an open-source package built on top of the Pyro probabilistic programming language for applications of variational encoder-decoder models in spectral and image analysis. The currently available models include variational autoencoders with translational and/or rotational invariance for unsupervised, class-conditioned, and semi-supervised learning, as well as *im2spec*-type models for predicting spectra from images and vice versa.
 More models to come!
 
 ## Examples
@@ -44,4 +44,4 @@ Then run tests as:
 pytest tests
 ```
 
-If this is your first time contributing to an open-source project, we highly recommend to start with reading these very nice and detailed [guidelines](https://github.com/firstcontributions/first-contributions).
+If this is your first time contributing to an open-source project, we highly recommend starting by familiarizing yourself with these very nice and detailed contribution [guidelines](https://github.com/firstcontributions/first-contributions).
