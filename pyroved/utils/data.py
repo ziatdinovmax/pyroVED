@@ -12,7 +12,20 @@ def init_dataloader(*args: torch.Tensor,
                     shuffle: bool = True,
                     **kwargs: int
                     ) -> Type[torch.utils.data.DataLoader]:
+    """
+    Returns initialized PyTorch dataloader, which is used by pyroVED's trainers.
+    The inputs are torch Tensor objects containing training data and (optionally)
+    labels.
 
+    Example:
+
+    >>> # Load training data stored as numpy array
+    >>> train_data = np.load("my_training_data.npy")
+    >>> # Transform numpy array to toech Tensor object
+    >>> train_data = torch.from_numpy(train_data).float()
+    >>> # Initialize dataloader
+    >>> train_loader = init_dataloader(train_data)
+    """
     batch_size = kwargs.get("batch_size", 100)
     tensor_set = torch.utils.data.dataset.TensorDataset(*args)
     if random_sampler:
@@ -30,7 +43,9 @@ def init_ssvae_dataloaders(data_unsup: torch.Tensor,
                            data_val: Tuple[torch.Tensor],
                            **kwargs: int
                            ) -> Tuple[Type[torch.utils.data.DataLoader]]:
-
+    """
+    Helper function to initialize dataloader for ss-VAE models
+    """
     loader_unsup = init_dataloader(data_unsup, **kwargs)
     loader_sup = init_dataloader(*data_sup, sampler=True, **kwargs)
     loader_val = init_dataloader(*data_val, **kwargs)

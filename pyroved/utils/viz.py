@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 def plot_img_grid(imgdata: torch.Tensor, d: int,
                   **kwargs: Union[str, int, List[float]]) -> None:
     """
-    Plots a square grid of images
+    Plots a *d*-by-*d* square grid of 2D images
     """
     imgdata = imgdata[:, None] if imgdata.ndim == 3 else imgdata
     grid = make_grid(imgdata, nrow=d,
@@ -26,6 +26,9 @@ def plot_img_grid(imgdata: torch.Tensor, d: int,
 
 
 def plot_spect_grid(spectra: torch.Tensor, d: int, **kwargs: List[float]):  # TODO: Add 'axes' and 'extent'
+    """
+    Plots a *d*-by-*d* square grid with 1D spectral plots
+    """
     _, axes = plt.subplots(d, d, figsize=(8, 8),
                            subplot_kw={'xticks': [], 'yticks': []},
                            gridspec_kw=dict(hspace=0.1, wspace=0.1))
