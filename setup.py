@@ -16,7 +16,7 @@ if __name__ == "__main__":
         name='pyroved',
         python_requires='>=3.6',
         version=__version__,
-        description='Variational encoder-decoder models',
+        description='Variational encoder-decoder models in Pyro probabilistic programming language',
         long_description=open(os.path.join(module_dir, 'README.md')).read(),
         long_description_content_type='text/markdown',
         url='https://github.com/ziatdinovmax/pyroVED/',
