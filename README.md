@@ -14,7 +14,7 @@ Please check out our interactive [examples](https://colab.research.google.com/gi
 
 **Requirements**:
 - python >= 3.6
-- pyro-ppl >= 1.7
+- pyro-ppl >= 1.6
 
 Install pyroVED using pip:
 
