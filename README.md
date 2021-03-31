@@ -8,7 +8,16 @@ pyroVED is an open-source package built on top of the Pyro probabilistic program
 More models to come!
 
 ## Examples
-Please check out our interactive [examples](https://colab.research.google.com/github/ziatdinovmax/pyroVED/blob/main/examples/pyroVED_examples.ipynb) and let us know if you have any questions or if you would like to see the addition of any specific functionality!
+The easiest way to start using pyroVED is via [Google Colab](https://colab.research.google.com/notebooks/intro.ipynb), which is a free research tool from Google for machine learning education and research built on top of Jupyter Notebook. The following notebooks can be executed in Google Colab by simply clicking on the "Open in Colab" icon:
+<br><br>
+
+*  Shift-VAE: Application to 1D spectra with arbitrary offset in peak position [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ziatdinovmax/pyroVED/blob/master/examples/shiftVAE.ipynb)
+
+*  r-VAE: Application to arbitrary rotated 2D images [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ziatdinovmax/pyroVED/blob/master/examples/rVAE.ipynb)
+
+*  j(r)-VAE: Learning (jointly) discrete and continuous representations of arbitrary rotated image data [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ziatdinovmax/pyroVED/blob/main/examples/jrVAE.ipynb)
+
+*  ss(r)-VAE: Semi-supervised learning from data with orientational disorder [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ziatdinovmax/pyroVED/blob/main/examples/ssrVAE.ipynb)
 
 ## Installation
 
