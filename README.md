@@ -12,7 +12,7 @@ Please check out our interactive [examples](https://colab.research.google.com/gi
 
 ## Installation
 
-#### Requirements:
+#### Requirements
 - python >= 3.6
 - pyro-ppl >= 1.6
 
