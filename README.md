@@ -40,7 +40,7 @@ pip install --upgrade git+https://github.com/ziatdinovmax/pyroved.git
 
 ## Development
 
-To run the unit tests, you'll need to have a pytest framework:
+To run the unit tests, you'll need to have a pytest framework installed:
 
 ```bash
 python3 -m pip install pytest
