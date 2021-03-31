@@ -29,12 +29,12 @@ class baseVAE(nn.Module):
         self.grid = None
 
     @abstractmethod
-    def model(self):
+    def model(self, x, y, **kwargs):
         """Pyro's model"""
         raise NotImplementedError
 
     @abstractmethod
-    def guide(self):
+    def guide(self, x, y, **kwargs):
         """Pyro's guide"""
         raise NotImplementedError
 
