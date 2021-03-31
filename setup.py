@@ -31,7 +31,7 @@ if __name__ == "__main__":
             'torchvision>=0.7.0'
         ],
         classifiers=['Programming Language :: Python',
-                     'Development Status :: 2 - Pre-Alpha',
+                     'Development Status :: 3 - Alpha',
                      'Intended Audience :: Science/Research',
                      'Operating System :: OS Independent',
                      'Topic :: Scientific/Engineering']
