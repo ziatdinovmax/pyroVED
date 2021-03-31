@@ -1,8 +1,8 @@
 README
 ======
 
-.. image:: https://github.com/ziatdinovmax/pyroved/workflows/build/badge.svg?branch=master
-    :target: https://github.com/ziatdinovmax/pyroved/actions?query=workflow%3Abuild
+.. image:: https://github.com/ziatdinovmax/pyroVED/actions/workflows/actions.yml/badge.svg
+    :target: https://github.com/ziatdinovmax/pyroVED/actions/workflows/actions.yml
     :alt: GiHub Actions
 .. image:: https://badge.fury.io/py/pyroved.svg
         :target: https://badge.fury.io/py/pyroved
