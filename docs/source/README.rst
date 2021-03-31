@@ -22,32 +22,32 @@ Requirements
 
 Install pyroVED using pip:
 
-```bash
-pip install pyroved
-```
+.. code:: bash
+
+   pip install pyroved
 
 Latest (unstable) version
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To upgrade to the latest (unstable) version, run
 
-```bash
-pip install --upgrade git+https://github.com/ziatdinovmax/pyroved.git
-```
+.. code:: bash
+
+   pip install --upgrade git+https://github.com/ziatdinovmax/pyroved.git
 
 Development
 -----------
 
 To run the unit tests, you'll need to have a pytest framework installed:
 
-```bash
-python3 -m pip install pytest
-```
+.. code:: bash
+
+   python3 -m pip install pytest
 
 Then run tests as:
 
-```bash
-pytest tests
-```
+.. code:: bash
+
+   pytest tests
 
 If this is your first time contributing to an open-source project, we highly recommend starting by familiarizing yourself with these very nice and detailed contribution `guidelines <https://github.com/firstcontributions/first-contributions>`_.

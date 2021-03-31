@@ -3,7 +3,7 @@ Trainers
 
 SVI Trainer
 -----------
-.. autoclass:: pyroved.trainers.svi
+.. autoclass:: pyroved.trainers.SVItrainer
     :members:
     :undoc-members:
     :member-order: bysource
@@ -11,7 +11,7 @@ SVI Trainer
 
 auxSVI Trainer
 --------------
-.. autoclass:: pyroved.trainers.auxsvi
+.. autoclass:: pyroved.trainers.auxSVItrainer
     :members:
     :undoc-members:
     :member-order: bysource

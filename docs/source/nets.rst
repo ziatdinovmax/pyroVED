@@ -61,7 +61,7 @@ Convolutional nets
     :member-order: bysource
     :show-inheritance:
 
-.. autoclass:: pyroved.nets.Upsampler
+.. autoclass:: pyroved.nets.UpsampleBlock
     :members:
     :undoc-members:
     :member-order: bysource

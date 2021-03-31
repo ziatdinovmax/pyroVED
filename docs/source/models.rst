@@ -3,7 +3,7 @@ pyroVED models
 
 trVAE
 -----
-.. autoclass:: pyroved.models.trvae
+.. autoclass:: pyroved.models.trVAE
     :members:
     :undoc-members:
     :member-order: bysource
@@ -11,7 +11,7 @@ trVAE
 
 j-trVAE
 -------
-.. autoclass:: pyroved.models.jtrvae
+.. autoclass:: pyroved.models.jtrVAE
     :members:
     :undoc-members:
     :member-order: bysource
@@ -19,7 +19,7 @@ j-trVAE
 
 ss-trVAE
 --------
-.. autoclass:: pyroved.models.sstrvae
+.. autoclass:: pyroved.models.sstrVAE
     :members:
     :undoc-members:
     :member-order: bysource
@@ -27,7 +27,7 @@ ss-trVAE
 
 VED
 ---
-.. autoclass:: pyroved.models.ved
+.. autoclass:: pyroved.models.VED
     :members:
     :undoc-members:
     :member-order: bysource
