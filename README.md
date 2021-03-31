@@ -21,8 +21,8 @@ The easiest way to start using pyroVED is via [Google Colab](https://colab.resea
 ## Installation
 
 #### Requirements
-- python >= 3.6
-- pyro-ppl >= 1.6
+*   python >= 3.6
+*   pyro-ppl >= 1.6
 
 Install pyroVED using pip:
 
