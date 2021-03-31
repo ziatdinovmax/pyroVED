@@ -31,6 +31,8 @@ class SVItrainer:
 
     Example:
 
+    Train a model with SVI trainer using default settings
+
     >>> # Initialize model
     >>> data_dim = (28, 28)
     >>> rvae = pyroved.models.trVAE(data_dim, latent_dim=2, coord=1)
@@ -39,6 +41,20 @@ class SVItrainer:
     >>> # Train for 200 epochs:
     >>> for _ in range(200):
     >>>     trainer.step(train_loader)
+    >>>     trainer.print_statistics()
+
+    Train a model with SVI trainer with a "time"-dependent KL scaling factor
+
+    >>> # Initialize model
+    >>> data_dim = (28, 28)
+    >>> rvae = pyroved.models.trVAE(data_dim, latent_dim=2, coord=1)
+    >>> # Initialize SVI trainer
+    >>> trainer = SVItrainer(rvae)
+    >>> kl_scale = torch.linspace(1, 4, 50) # ramp-up KL scale factor from 1 to 4 during first 50 epochs
+    >>> # Train
+    >>> for e in range(100):
+    >>>     sc = kl_scale[e] if e < len(kl_scale) else kl_scale[-1]
+    >>>     trainer.step(train_loader, scale_factor=sc)
     >>>     trainer.print_statistics()
     """
     def __init__(self,
@@ -121,6 +137,15 @@ class SVItrainer:
              **kwargs: float) -> None:
         """
         Single training and (optionally) evaluation step
+
+        Args:
+            train_loader:
+                Pytorch’s dataloader object with training data
+            test_loader:
+                (Optional) Pytorch’s dataloader object with test data
+            **scale_factor:
+                Scale factor for KL divergence. See e.g. https://arxiv.org/abs/1804.03599
+                Default value is 1 (i.e. no scaling)
         """
         train_loss = self.train(train_loader, **kwargs)
         self.loss_history["training_loss"].append(train_loss)
