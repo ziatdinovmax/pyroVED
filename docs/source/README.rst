@@ -2,7 +2,7 @@ README
 ======
 
 .. image:: https://github.com/ziatdinovmax/pyroved/workflows/build/badge.svg?branch=master
-    :target: https://github.com/ziatdinovmax/sidpy/actions?query=workflow%3Abuild
+    :target: https://github.com/ziatdinovmax/pyroved/actions?query=workflow%3Abuild
     :alt: GiHub Actions
 .. image:: https://badge.fury.io/py/pyroved.svg
         :target: https://badge.fury.io/py/pyroved
