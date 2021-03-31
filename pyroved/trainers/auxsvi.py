@@ -133,7 +133,7 @@ class auxSVItrainer:
 
         Args:
             loader_unsup:
-                Pytorch's datalaoder with unlabeled training data
+                Pytorch's dataloader with unlabeled training data
             loader_sup:
                 Pytorch's dataloader with labeled training data
             loader_val:
