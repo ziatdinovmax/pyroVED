@@ -1,5 +1,5 @@
-pyroVED
-=======
+README
+======
 
 .. image:: https://github.com/ziatdinovmax/pyroved/workflows/build/badge.svg?branch=master
     :target: https://github.com/ziatdinovmax/sidpy/actions?query=workflow%3Abuild
