@@ -79,19 +79,19 @@ class baseVAE(nn.Module):
         """
         Sets a user-defined encoder neural network
         """
-        self.encoder_z = encoder_net
+        self.encoder_z = encoder_net.to(self.device)
 
     def set_decoder(self, decoder_net: Type[torch.nn.Module]) -> None:
         """
         Sets a user-defined decoder neural network
         """
-        self.decoder = decoder_net
+        self.decoder = decoder_net.to(self.device)
 
     def save_weights(self, filepath: str) -> None:
         """
         Saves trained weights of encoder(s) and decoder
         """
-        torch.save(self.state_dict(), filepath)
+        torch.save(self.state_dict(), filepath + '.pt')
 
     def load_weights(self, filepath: str) -> None:
         """
