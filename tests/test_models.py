@@ -14,7 +14,7 @@ from numpy import array_equal
 
 sys.path.append("../../")
 
-from pyroved import models, utils
+from pyroved import models, nets, utils
 
 
 def get_traces(model, *args):
@@ -264,6 +264,44 @@ def test_sstrvae_decoder_sampler(sampler, expected_dist):
     assert_(isinstance(model_trace.nodes["x"]['fn'].base_dist, expected_dist))
 
 
+@pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8)])
+def test_basevae_encode_x(data_dim):
+    x = torch.randn(*data_dim)
+    vae = models.base.baseVAE()
+    encoder_net = nets.fcEncoderNet(data_dim[1:], 2, 0)
+    vae.set_encoder(encoder_net)
+    encoded = vae._encode(x)
+    assert_equal(encoded[:, :2].shape, (data_dim[0], 2))
+    assert_equal(encoded[:, 2:].shape, (data_dim[0], 2))
+
+
+def test_basevae_encode_xy():
+    data_dim = (2, 64)
+    x = torch.randn(*data_dim)
+    alpha = torch.ones(data_dim[0], 3) / 3
+    y = dist.OneHotCategorical(alpha).sample()
+    vae = models.base.baseVAE()
+    encoder_net = nets.fcEncoderNet(data_dim[1:], 2, 3)
+    vae.set_encoder(encoder_net)
+    encoded = vae._encode(x, y)
+    assert_equal(encoded[:, :2].shape, (data_dim[0], 2))
+    assert_equal(encoded[:, 2:].shape, (data_dim[0], 2))
+
+
+@pytest.mark.parametrize("coord", [0, 1, 2, 3])
+@pytest.mark.parametrize("data_dim", [(2, 8), (2, 8, 8), (3, 8), (3, 8, 8)])
+def test_basevae_decode_x(data_dim, coord):
+    z = torch.randn(data_dim[0], 2)
+    vae = models.base.baseVAE()
+    vae.coord = coord
+    vae.grid = utils.generate_grid(data_dim[1:]).to(vae.device)
+    dnet = nets.sDecoderNet if coord in [1, 2, 3] else nets.fcDecoderNet
+    decoder_net = dnet(data_dim[1:], 2)
+    vae.set_decoder(decoder_net)
+    decoded = vae._decode(z)
+    assert_equal(decoded.squeeze().shape, data_dim)
+
+
 @pytest.mark.parametrize("vae_model", [models.jtrVAE, models.sstrVAE])
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
 @pytest.mark.parametrize("data_dim", [(8,), (8, 8), (8,), (8, 8)])
@@ -392,35 +430,16 @@ def test_jsstrvae_manifold2d(vae_model, data_dim, coord):
 
 @pytest.fixture(scope='session')
 @pytest.mark.parametrize("coord", [0, 1, 2, 3])
-def test_save_load_trvae(coord):
+def test_save_load_basevae(coord):
     data_dim = (5, 8, 8)
-    vae = models.trVAE(data_dim[1:], 2, coord=coord)
+    vae = models.base.baseVAE()
+    encoder_net = nets.fcEncoderNet(data_dim[1:], 2+coord, 0)
+    dnet = nets.sDecoderNet if coord in [1, 2, 3] else nets.fcDecoderNet
+    decoder_net = dnet(data_dim, 2, 0)
+    vae.set_encoder(encoder_net)
+    vae.set_decoder(decoder_net)
     weights_init = dc(vae.state_dict())
     vae.save_weights("my_weights")
-    vae.load_weights("my_weights")
-    weights_loaded = vae.state_dict()
-    assert_(assert_weights_equal(weights_loaded, weights_init))
-
-
-@pytest.fixture(scope='session')
-@pytest.mark.parametrize("coord", [0, 1, 2, 3])
-def test_save_load_sstrvae(coord):
-    data_dim = (5, 8, 8)
-    vae = models.sstrVAE(data_dim[1:], 2, 3, coord=coord)
-    weights_init = dc(vae.state_dict())
-    vae.save_weights("my_weights")
-    vae.load_weights("my_weights")
-    weights_loaded = vae.state_dict()
-    assert_(assert_weights_equal(weights_loaded, weights_init))
-
-
-@pytest.fixture(scope='session')
-@pytest.mark.parametrize("coord", [0, 1, 2, 3])
-def test_save_load_jtrvae(coord):
-    data_dim = (5, 8, 8)
-    vae = models.jtrVAE(data_dim[1:], 2, 3, coord=coord)
-    weights_init = dc(vae.state_dict())
-    vae.save_weights("my_weights")
-    vae.load_weights("my_weights")
+    vae.load_weights("my_weights.pt")
     weights_loaded = vae.state_dict()
     assert_(assert_weights_equal(weights_loaded, weights_init))
