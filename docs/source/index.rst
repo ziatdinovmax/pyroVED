@@ -21,3 +21,9 @@ Welcome to pyroVED's documentation!
    trainers
    nets
    utils
+
+.. toctree::
+   :maxdepth: 3
+   :caption: Examples
+
+   examples 
