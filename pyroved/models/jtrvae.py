@@ -8,7 +8,7 @@ and/or translations
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
-from typing import Optional, Tuple, Union
+from typing import Tuple, Union
 
 import pyro
 import pyro.distributions as dist
@@ -124,7 +124,7 @@ class jtrVAE(baseVAE):
 
     def model(self,
               x: torch.Tensor,
-              **kwargs: float) -> torch.Tensor:
+              **kwargs: float) -> None:
         """
         Defines the model p(x|z,c)p(z)p(c)
         """
@@ -166,7 +166,7 @@ class jtrVAE(baseVAE):
 
     def guide(self,
               x: torch.Tensor,
-              **kwargs: float) -> torch.Tensor:
+              **kwargs: float) -> None:
         """
         Defines the guide q(z,c|x)
         """

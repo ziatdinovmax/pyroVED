@@ -124,7 +124,7 @@ class sstrVAE(baseVAE):
     def model(self,
               xs: torch.Tensor,
               ys: Optional[torch.Tensor] = None,
-              **kwargs: float) -> torch.Tensor:
+              **kwargs: float) -> None:
         """
         Model of the generative process p(x|z,y)p(y)p(z)
         """
