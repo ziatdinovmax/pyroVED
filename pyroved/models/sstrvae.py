@@ -245,6 +245,14 @@ class sstrVAE(baseVAE):
                    **kwargs: int) -> torch.Tensor:
         """
         Classifies data
+
+        Args:
+            x_new:
+                Data to classify with a trained ss-trVAE. The new data must have
+                the same dimensions (images height x width or spectra length)
+                as the one used for training.
+            **kwargs:
+                Batch size (for encoding large volumes of data)
         """
         def classify(x_i) -> torch.Tensor:
             with torch.no_grad():
@@ -264,9 +272,20 @@ class sstrVAE(baseVAE):
                **kwargs: int) -> torch.Tensor:
         """
         Encodes data using a trained inference (encoder) network
+
+        Args:
+            x_new:
+                Data to encode with a trained trVAE. The new data must have
+                the same dimensions (images height and width or spectra length)
+                as the one used for training.
+            y:
+                Classes as one-hot vectors for each sample in x_new. If not provided,
+                the ss-trVAE's classifier will be used to predict the classes.
+            **kwargs:
+                Batch size (for encoding large volumes of data)
         """
         if y is None:
-            y = self.classifier(x_new)
+            y = self.classifier(x_new, **kwargs)
         if y.ndim < 2:
             y = to_onehot(y, self.num_classes)
         z = self._encode(x_new, y, **kwargs)
@@ -277,6 +296,10 @@ class sstrVAE(baseVAE):
     def decode(self, z: torch.Tensor, y: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
         Decodes a batch of latent coordinates
+
+        Args:
+            z: Latent coordinates (without rotational and translational parts)
+            y: Classes as one-hot vectors for each sample in z
         """
         z = torch.cat([z.to(self.device), y.to(self.device)], -1)
         loc = self._decode(z, **kwargs)
@@ -286,11 +309,19 @@ class sstrVAE(baseVAE):
                    **kwargs: Union[str, int]) -> torch.Tensor:
         """
         Returns a learned latent manifold in the image space
+
+        Args:
+            d: Grid size
+            plot: Plots the generated manifold (Default: True)
+            kwargs: Keyword arguments include 'label' for class label (if any),
+                    custom min/max values for grid boundaries passed as 'z_coord'
+                    (e.g. z_coord = [-3, 3, -3, 3]) and plot parameters
+                    ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
         """
         cls = tt(kwargs.get("label", 0))
         if cls.ndim < 2:
             cls = to_onehot(cls.unsqueeze(0), self.num_classes)
-        z, (grid_x, grid_y) = generate_latent_grid(d)
+        z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
         z = z.to(self.device)
         z = torch.cat([z, cls.repeat(z.shape[0], 1)], dim=-1)
         z = [z]

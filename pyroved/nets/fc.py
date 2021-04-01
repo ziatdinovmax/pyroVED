@@ -43,7 +43,8 @@ class Concat(nn.Module):
 
 class fcEncoderNet(nn.Module):
     """
-    A standard (fully-connected) encoder for VAE
+    Standard fully-connected encoder NN for VAE.
+    The encoder outputs mean and standard evidation of the encoded distribution.
     """
     def __init__(self,
                  in_dim: Tuple[int],
@@ -86,7 +87,7 @@ class fcEncoderNet(nn.Module):
 
 class jfcEncoderNet(nn.Module):
     """
-    A standard (fully-connected) encoder for joint VAE.
+    Fully-connected encoder for joint VAE.
     The encoder outputs mean, standard evidation and class probabilities.
     """
     def __init__(self,
@@ -132,7 +133,7 @@ class jfcEncoderNet(nn.Module):
 
 class fcDecoderNet(nn.Module):
     """
-    Standard decoder for VAE
+    Standard fully-connected decoder for VAE
     """
     def __init__(self,
                  out_dim: Tuple[int],
@@ -256,7 +257,7 @@ class coord_latent(nn.Module):
 
 class fcClassifierNet(nn.Module):
     """
-    Simple classification neural network
+    Simple classification neural network with fully-connected layers only.
     """
     def __init__(self,
                  in_dim: Tuple[int],
