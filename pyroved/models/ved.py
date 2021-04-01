@@ -124,7 +124,7 @@ class VED(baseVAE):
     def model(self,
               x: torch.Tensor = None,
               y: torch.Tensor = None,
-              **kwargs: float) -> torch.Tensor:
+              **kwargs: float) -> None:
         """
         Defines the model p(y|z)p(z)
         """
@@ -149,7 +149,7 @@ class VED(baseVAE):
     def guide(self,
               x: torch.Tensor = None,
               y: torch.Tensor = None,
-              **kwargs: float) -> torch.Tensor:
+              **kwargs: float) -> None:
         """
         Defines the guide q(z|x)
         """

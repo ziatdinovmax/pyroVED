@@ -129,7 +129,7 @@ class trVAE(baseVAE):
     def model(self,
               x: torch.Tensor,
               y: Optional[torch.Tensor] = None,
-              **kwargs: float) -> torch.Tensor:
+              **kwargs: float) -> None:
         """
         Defines the model p(x|z)p(z)
         """
@@ -168,7 +168,7 @@ class trVAE(baseVAE):
     def guide(self,
               x: torch.Tensor,
               y: Optional[torch.Tensor] = None,
-              **kwargs: float) -> torch.Tensor:
+              **kwargs: float) -> None:
         """
         Defines the guide q(z|x)
         """
