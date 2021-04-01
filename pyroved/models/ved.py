@@ -168,6 +168,14 @@ class VED(baseVAE):
         """
         Encodes data using a trained inference (encoder) network
         (this is basically a wrapper for self._encode)
+
+        Args:
+            x_new:
+                Data to encode with a trained trVAE. The new data must have
+                the same dimensions (images height and width or spectra length)
+                as the one used for training.
+            **kwargs:
+                Batch size (for encoding large volumes of data)
         """
         self.eval()
         z = self._encode(x_new)
@@ -176,10 +184,12 @@ class VED(baseVAE):
 
     def decode(self,
                z: torch.Tensor,
-               y: torch.Tensor = None,
                **kwargs: int) -> torch.Tensor:
         """
         Decodes a batch of latent coordnates
+
+        Args:
+            z: Latent coordinates
         """
         self.eval()
         z = z.to(self.device)
@@ -210,9 +220,16 @@ class VED(baseVAE):
                    **kwargs: Union[str, int]) -> torch.Tensor:
         """
         Plots a learned latent manifold in the image space
+
+        Args:
+            d: Grid size
+            plot: Plots the generated manifold (Default: True)
+            kwargs: Keyword arguments include custom min/max values for grid
+                    boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3])
+                    and plot parameters ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
         """
         self.eval()
-        z, (grid_x, grid_y) = generate_latent_grid(d)
+        z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
         z = z.to(self.device)
         with torch.no_grad():
             loc = self.decoder(z).cpu()

@@ -212,7 +212,14 @@ class trVAE(baseVAE):
     def encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
         Encodes data using a trained inference (encoder) network
-        (this is basically a wrapper for self._encode)
+
+        Args:
+            x_new:
+                Data to encode with a trained trVAE. The new data must have
+                the same dimensions (images height and width or spectra length)
+                as the one used for training.
+            **kwargs:
+                Batch size (for encoding large volumes of data)
         """
         z = self._encode(x_new)
         z_loc, z_scale = z.split(self.z_dim, 1)
@@ -224,6 +231,10 @@ class trVAE(baseVAE):
                **kwargs: int) -> torch.Tensor:
         """
         Decodes a batch of latent coordnates
+
+        Args:
+            z: Latent coordinates (without rotational and translational parts)
+            y: Class (if any) as a batch of one-hot vectors
         """
         z = z.to(self.device)
         if y is not None:
@@ -235,12 +246,20 @@ class trVAE(baseVAE):
                    **kwargs: Union[str, int]) -> torch.Tensor:
         """
         Plots a learned latent manifold in the image space
+
+        Args:
+            d: Grid size
+            plot: Plots the generated manifold (Default: True)
+            kwargs: Keyword arguments include 'label' for class label (if any),
+                    custom min/max values for grid boundaries passed as 'z_coord'
+                    (e.g. z_coord = [-3, 3, -3, 3]) and plot parameters
+                    ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
         """
         if self.num_classes > 0:
             cls = tt(kwargs.get("label", 0))
             if cls.ndim < 2:
                 cls = to_onehot(cls.unsqueeze(0), self.num_classes)
-        z, (grid_x, grid_y) = generate_latent_grid(d)
+        z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
         z = z.to(self.device)
         if self.num_classes > 0:
             z = torch.cat([z, cls.repeat(z.shape[0], 1)], dim=-1)
