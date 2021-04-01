@@ -74,7 +74,7 @@ class jtrVAE(baseVAE):
     Initialize a joint VAE model with rotational invariance for 10 discrete classes
 
     >>> data_dim = (28, 28)
-    >>> ssvae = jtrVAE(data_dim, latent_dim=2, discrete_dim=10, coord=1)
+    >>> jrvae = jtrVAE(data_dim, latent_dim=2, discrete_dim=10, coord=1)
     """
 
     def __init__(self,
