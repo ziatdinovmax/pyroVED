@@ -8,7 +8,7 @@ README
         :target: https://badge.fury.io/py/pyroved
         :alt: PyPI version
 
-pyroVED is an open-source package built on top of the Pyro probabilistic programming language for applications of variational encoder-decoder models in spectral and image analysis. The currently available models include variational autoencoders with translational and/or rotational invariance for unsupervised, class-conditioned, and semi-supervised learning, as well as *im2spec*-type models for predicting spectra from images and vice versa.
+pyroVED is an open-source package built on top of the Pyro probabilistic programming language for applications of variational encoder-decoder models in spectral and image analyses. The currently available models include variational autoencoders with translational and/or rotational invariance for unsupervised, class-conditioned, and semi-supervised learning, as well as *im2spec*-type models for predicting spectra from images and vice versa.
 More models to come!
 
 Installation

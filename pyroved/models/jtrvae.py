@@ -216,8 +216,8 @@ class jtrVAE(baseVAE):
                 Data to encode with a trained trVAE. The new data must have
                 the same dimensions (images height and width or spectra length)
                 as the one used for training.
-            **kwargs:
-                Batch size (for encoding large volumes of data)
+            kwargs:
+                Batch size as 'batch_size' (for encoding large volumes of data)
         """
         z = self._encode(x_new)
         z_loc = z[:, :self.z_dim]

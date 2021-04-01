@@ -218,8 +218,8 @@ class trVAE(baseVAE):
                 Data to encode with a trained trVAE. The new data must have
                 the same dimensions (images height and width or spectra length)
                 as the one used for training.
-            **kwargs:
-                Batch size (for encoding large volumes of data)
+            kwargs:
+                Batch size as 'batch_size' (for encoding large volumes of data)
         """
         z = self._encode(x_new)
         z_loc, z_scale = z.split(self.z_dim, 1)
@@ -235,6 +235,7 @@ class trVAE(baseVAE):
         Args:
             z: Latent coordinates (without rotational and translational parts)
             y: Class (if any) as a batch of one-hot vectors
+            kwargs: Batch size as 'batch_size'
         """
         z = z.to(self.device)
         if y is not None:
