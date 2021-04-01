@@ -251,8 +251,8 @@ class sstrVAE(baseVAE):
                 Data to classify with a trained ss-trVAE. The new data must have
                 the same dimensions (images height x width or spectra length)
                 as the one used for training.
-            **kwargs:
-                Batch size (for encoding large volumes of data)
+            kwargs:
+                Batch size as 'batch_size' (for encoding large volumes of data)
         """
         def classify(x_i) -> torch.Tensor:
             with torch.no_grad():
@@ -281,8 +281,8 @@ class sstrVAE(baseVAE):
             y:
                 Classes as one-hot vectors for each sample in x_new. If not provided,
                 the ss-trVAE's classifier will be used to predict the classes.
-            **kwargs:
-                Batch size (for encoding large volumes of data)
+            kwargs:
+                Batch size as 'batch_size' (for encoding large volumes of data)
         """
         if y is None:
             y = self.classifier(x_new, **kwargs)
@@ -300,6 +300,7 @@ class sstrVAE(baseVAE):
         Args:
             z: Latent coordinates (without rotational and translational parts)
             y: Classes as one-hot vectors for each sample in z
+            kwargs: Batch size as 'batch_size'
         """
         z = torch.cat([z.to(self.device), y.to(self.device)], -1)
         loc = self._decode(z, **kwargs)

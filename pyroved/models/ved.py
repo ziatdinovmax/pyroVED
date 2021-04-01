@@ -167,15 +167,14 @@ class VED(baseVAE):
     def encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
         Encodes data using a trained inference (encoder) network
-        (this is basically a wrapper for self._encode)
 
         Args:
             x_new:
                 Data to encode with a trained trVAE. The new data must have
                 the same dimensions (images height and width or spectra length)
                 as the one used for training.
-            **kwargs:
-                Batch size (for encoding large volumes of data)
+            kwargs:
+                Batch size as 'batch_size' (for encoding large volumes of data)
         """
         self.eval()
         z = self._encode(x_new)
