@@ -11,6 +11,8 @@ The easiest way to start using pyroVED is via Google Colab, which is a free rese
 
 *   | **ss(r)-VAE**: Semi-supervised learning from data with orientational disorder |ss(r)-VAE|
 
+*   | **im2spec-VED**: Predicting 1D spectra from 2D images |im2spec-VED|
+
 .. |Shift-VAE| image:: https://colab.research.google.com/assets/colab-badge.svg
    :target: https://colab.research.google.com/github/ziatdinovmax/pyroVED/blob/master/examples/shiftVAE.ipynb
 
@@ -22,3 +24,6 @@ The easiest way to start using pyroVED is via Google Colab, which is a free rese
 
 .. |ss(r)-VAE| image:: https://colab.research.google.com/assets/colab-badge.svg
    :target: https://colab.research.google.com/github/ziatdinovmax/pyroVED/blob/master/examples/ssrVAE.ipynb
+   
+.. |im2spec-VED| image:: https://colab.research.google.com/assets/colab-badge.svg
+   :target: https://colab.research.google.com/github/ziatdinovmax/pyroVED/blob/master/examples/im2spec_VED.ipynb
