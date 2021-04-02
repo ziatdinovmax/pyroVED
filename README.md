@@ -19,7 +19,7 @@ The easiest way to start using pyroVED is via [Google Colab](https://colab.resea
 
 *   ss(r)-VAE: Semi-supervised learning from data with orientational disorder [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ziatdinovmax/pyroVED/blob/main/examples/ssrVAE.ipynb)
 
-*   im2spec-VED: Predicting spectra from images [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ziatdinovmax/pyroVED/blob/main/examples/im2spec_VED.ipynb)  
+*   im2spec-VED: Predicting 1D spectra from 2D images [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ziatdinovmax/pyroVED/blob/main/examples/im2spec_VED.ipynb)  
 
 ## Installation
 
