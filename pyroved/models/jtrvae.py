@@ -213,7 +213,10 @@ class jtrVAE(baseVAE):
             zs = zs[:, 1:]
         return phi, dx, zs
 
-    def encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
+    def encode(self,
+               x_new: torch.Tensor,
+               logits: bool = False,
+               **kwargs: int) -> torch.Tensor:
         """
         Encodes data using a trained inference (encoder) network
 
@@ -222,15 +225,18 @@ class jtrVAE(baseVAE):
                 Data to encode with a trained trVAE. The new data must have
                 the same dimensions (images height and width or spectra length)
                 as the one used for training.
+            logits:
+                Return raw class probabilities (Default: False)
             kwargs:
                 Batch size as 'batch_size' (for encoding large volumes of data)
         """
         z = self._encode(x_new)
         z_loc = z[:, :self.z_dim]
         z_scale = z[:, self.z_dim:2*self.z_dim]
-        alphas = z[:, 2*self.z_dim:]
-        _, pred_labels = torch.max(alphas, 1)
-        return z_loc, z_scale, pred_labels
+        classes = z[:, 2*self.z_dim:]
+        if not logits:
+            _, classes = torch.max(classes, 1)
+        return z_loc, z_scale, classes
 
     def decode(self, z: torch.Tensor, y: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
