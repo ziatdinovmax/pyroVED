@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Union, List, Tuple
 import torch
 from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
@@ -9,6 +9,8 @@ def plot_img_grid(imgdata: torch.Tensor, d: int,
     """
     Plots a *d*-by-*d* square grid of 2D images
     """
+    if imgdata.ndim < 3:
+        raise AssertionError("Images must be passed as a 3D or 4D tensor")
     imgdata = imgdata[:, None] if imgdata.ndim == 3 else imgdata
     grid = make_grid(imgdata, nrow=d,
                      padding=kwargs.get("padding", 2),
@@ -37,4 +39,29 @@ def plot_spect_grid(spectra: torch.Tensor, d: int, **kwargs: List[float]):  # TO
         ax.plot(y.squeeze())
         if ylim:
             ax.set_ylim(*ylim)
+    plt.show()
+
+
+def plot_grid_traversal(imgdata: torch.Tensor, d: int,
+                        data_dim: Tuple[int], disc_dim: int,
+                        **kwargs: Union[str, int, List[float]]
+                        ) -> None:
+    """
+    Plots a *disc_dim*-by-*d* grid of 2D images
+    """
+    if imgdata.ndim < 3:
+        raise AssertionError("Images must be passed as a 3D or 4D tensor")
+    imgdata = imgdata[:, None] if imgdata.ndim == 3 else imgdata
+    grid = make_grid(imgdata, nrow=d,
+                     padding=kwargs.get("padding", 2),
+                     pad_value=kwargs.get("pad_value", 0))
+    grid = grid[0][:(data_dim[0]+kwargs.get("padding", 2)) * disc_dim]
+    plt.figure(figsize=(8, 8))
+    plt.imshow(grid, cmap=kwargs.get("cmap", "gnuplot"),
+               origin=kwargs.get("origin", "upper"),
+               extent=kwargs.get("extent"))
+    plt.xlabel("$z_{cont}$", fontsize=18)
+    plt.ylabel("$z_{disc}$", fontsize=18)
+    plt.xticks([])
+    plt.yticks([])
     plt.show()
