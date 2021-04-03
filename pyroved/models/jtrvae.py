@@ -131,7 +131,9 @@ class jtrVAE(baseVAE):
         # register PyTorch module `decoder` with Pyro
         pyro.module("decoder", self.decoder)
         # KLD scale factor (see e.g. https://openreview.net/pdf?id=Sy2fzU9gl)
-        beta = kwargs.get("scale_factor", 1.)
+        beta = kwargs.get("scale_factor", [1., 1.])
+        if isinstance(beta, (float, int)):
+            beta = [beta, beta]
         reshape_ = torch.prod(tt(x.shape[1:])).item()
         bdim = x.shape[0]
         with pyro.plate("data"):
@@ -141,8 +143,9 @@ class jtrVAE(baseVAE):
             # sample discrete latent vector from the constant prior
             alpha = x.new_ones(torch.Size((bdim, self.discrete_dim))) / self.discrete_dim
             # sample from prior (value will be sampled by guide when computing ELBO)
-            with pyro.poutine.scale(scale=beta):
+            with pyro.poutine.scale(scale=beta[0]):
                 z = pyro.sample("latent_cont", dist.Normal(z_loc, z_scale).to_event(1))
+            with pyro.poutine.scale(scale=beta[1]):
                 z_disc = pyro.sample("latent_disc", dist.OneHotCategorical(alpha))
             # split latent variable into parts for rotation and/or translation
             # and image content
@@ -173,13 +176,16 @@ class jtrVAE(baseVAE):
         # register PyTorch module `encoder_z` with Pyro
         pyro.module("encoder_z", self.encoder_z)
         # KLD scale factor (see e.g. https://openreview.net/pdf?id=Sy2fzU9gl)
-        beta = kwargs.get("scale_factor", 1.)
+        beta = kwargs.get("scale_factor", [1., 1.])
+        if isinstance(beta, (float, int)):
+            beta = [beta, beta]
         with pyro.plate("data"):
             # use the encoder to get the parameters used to define q(z,c|x)
             z_loc, z_scale, alpha = self.encoder_z(x)
             # sample the latent code z
-            with pyro.poutine.scale(scale=beta):
+            with pyro.poutine.scale(scale=beta[0]):
                 pyro.sample("latent_cont", dist.Normal(z_loc, z_scale).to_event(1))
+            with pyro.poutine.scale(scale=beta[1]):
                 pyro.sample("latent_disc", dist.OneHotCategorical(alpha))
 
     def split_latent(self, zs: torch.Tensor) -> Tuple[torch.Tensor]:
