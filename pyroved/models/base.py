@@ -12,8 +12,9 @@ from abc import abstractmethod
 
 import torch
 import torch.nn as nn
+import torch.tensor as tt
 
-from ..utils import init_dataloader
+from ..utils import init_dataloader, transform_coordinates
 
 
 class baseVAE(nn.Module):
@@ -60,7 +61,7 @@ class baseVAE(nn.Module):
 
     def _decode(self, z_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
-        Decodes latent coordiantes in a batch-by-batch fashion
+        Decodes latent coordinates in a batch-by-batch fashion
         """
         def generator(z: List[torch.Tensor]) -> torch.Tensor:
             with torch.no_grad():
@@ -68,10 +69,17 @@ class baseVAE(nn.Module):
             return loc.cpu()
 
         z_new = init_dataloader(z_new, shuffle=False, **kwargs)
+        if self.coord > 0:
+            grid = self.grid
+            a = kwargs.get("angle", tt(0.)).to(self.device)
+            t = kwargs.get("shift", tt(0.)).to(self.device)
+            grid = transform_coordinates(
+                grid.unsqueeze(0), a.unsqueeze(0), t.unsqueeze(0))
+            grid = grid.squeeze()
         x_decoded = []
         for z in z_new:
             if self.coord > 0:
-                z = [self.grid.expand(z[0].shape[0], *self.grid.shape)] + z
+                z = [grid.expand(z[0].shape[0], *grid.shape)] + z
             x_decoded.append(generator(z))
         return torch.cat(x_decoded)
 

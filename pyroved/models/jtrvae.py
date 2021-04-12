@@ -266,7 +266,7 @@ class jtrVAE(baseVAE):
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
         z_disc = to_onehot(tt(disc_idx).unsqueeze(0), self.discrete_dim)
         z_disc = z_disc.repeat(z.shape[0], 1)
-        loc = self.decode(z, z_disc)
+        loc = self.decode(z, z_disc, **kwargs)
         if plot:
             if self.ndim == 2:
                 plot_img_grid(

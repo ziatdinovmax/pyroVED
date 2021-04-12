@@ -52,14 +52,16 @@ def generate_latent_grid(d: int, **kwargs) -> torch.Tensor:
     """
     Generates a grid of latent space coordinates
     """
+    if isinstance(d, int):
+        d = [d, d]
     z_coord = kwargs.get("z_coord")
     if z_coord:
         z1, z2, z3, z4 = z_coord
-        grid_x = torch.linspace(z2, z1, d)
-        grid_y = torch.linspace(z3, z4, d)
+        grid_x = torch.linspace(z2, z1, d[0])
+        grid_y = torch.linspace(z3, z4, d[1])
     else:
-        grid_x = dist.Normal(0, 1).icdf(torch.linspace(0.95, 0.05, d))
-        grid_y = dist.Normal(0, 1).icdf(torch.linspace(0.05, 0.95, d))
+        grid_x = dist.Normal(0, 1).icdf(torch.linspace(0.95, 0.05, d[0]))
+        grid_y = dist.Normal(0, 1).icdf(torch.linspace(0.05, 0.95, d[1]))
     z = []
     for xi in grid_x:
         for yi in grid_y:
