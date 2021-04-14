@@ -287,7 +287,7 @@ class sstrVAE(baseVAE):
         if y is None:
             y = self.classifier(x_new, **kwargs)
         if y.ndim < 2:
-            y = to_onehot(y, self.num_classes)
+            y = to_onehot(y, self.num_classes).cpu()
         z = self._encode(x_new, y, **kwargs)
         z_loc, z_scale = z.split(self.z_dim, 1)
         _, y_pred = torch.max(y, 1)
