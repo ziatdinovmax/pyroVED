@@ -15,11 +15,11 @@ import pyro.distributions as dist
 import torch
 import torch.tensor as tt
 
-from .base import baseVAE
 from ..nets import fcDecoderNet, jfcEncoderNet, sDecoderNet
-from ..utils import (generate_grid, get_sampler, plot_img_grid,
-                     plot_spect_grid, set_deterministic_mode,
-                     transform_coordinates, to_onehot, generate_latent_grid)
+from ..utils import (generate_grid, generate_latent_grid, get_sampler,
+                     plot_grid_traversal, plot_img_grid, plot_spect_grid,
+                     set_deterministic_mode, to_onehot, transform_coordinates)
+from .base import baseVAE
 
 
 class jtrVAE(baseVAE):
@@ -131,7 +131,9 @@ class jtrVAE(baseVAE):
         # register PyTorch module `decoder` with Pyro
         pyro.module("decoder", self.decoder)
         # KLD scale factor (see e.g. https://openreview.net/pdf?id=Sy2fzU9gl)
-        beta = kwargs.get("scale_factor", 1.)
+        beta = kwargs.get("scale_factor", [1., 1.])
+        if isinstance(beta, (float, int)):
+            beta = [beta, beta]
         reshape_ = torch.prod(tt(x.shape[1:])).item()
         bdim = x.shape[0]
         with pyro.plate("data"):
@@ -141,8 +143,9 @@ class jtrVAE(baseVAE):
             # sample discrete latent vector from the constant prior
             alpha = x.new_ones(torch.Size((bdim, self.discrete_dim))) / self.discrete_dim
             # sample from prior (value will be sampled by guide when computing ELBO)
-            with pyro.poutine.scale(scale=beta):
+            with pyro.poutine.scale(scale=beta[0]):
                 z = pyro.sample("latent_cont", dist.Normal(z_loc, z_scale).to_event(1))
+            with pyro.poutine.scale(scale=beta[1]):
                 z_disc = pyro.sample("latent_disc", dist.OneHotCategorical(alpha))
             # split latent variable into parts for rotation and/or translation
             # and image content
@@ -173,13 +176,16 @@ class jtrVAE(baseVAE):
         # register PyTorch module `encoder_z` with Pyro
         pyro.module("encoder_z", self.encoder_z)
         # KLD scale factor (see e.g. https://openreview.net/pdf?id=Sy2fzU9gl)
-        beta = kwargs.get("scale_factor", 1.)
+        beta = kwargs.get("scale_factor", [1., 1.])
+        if isinstance(beta, (float, int)):
+            beta = [beta, beta]
         with pyro.plate("data"):
             # use the encoder to get the parameters used to define q(z,c|x)
             z_loc, z_scale, alpha = self.encoder_z(x)
             # sample the latent code z
-            with pyro.poutine.scale(scale=beta):
+            with pyro.poutine.scale(scale=beta[0]):
                 pyro.sample("latent_cont", dist.Normal(z_loc, z_scale).to_event(1))
+            with pyro.poutine.scale(scale=beta[1]):
                 pyro.sample("latent_disc", dist.OneHotCategorical(alpha))
 
     def split_latent(self, zs: torch.Tensor) -> Tuple[torch.Tensor]:
@@ -207,7 +213,10 @@ class jtrVAE(baseVAE):
             zs = zs[:, 1:]
         return phi, dx, zs
 
-    def encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
+    def encode(self,
+               x_new: torch.Tensor,
+               logits: bool = False,
+               **kwargs: int) -> torch.Tensor:
         """
         Encodes data using a trained inference (encoder) network
 
@@ -216,15 +225,18 @@ class jtrVAE(baseVAE):
                 Data to encode with a trained trVAE. The new data must have
                 the same dimensions (images height and width or spectra length)
                 as the one used for training.
+            logits:
+                Return raw class probabilities (Default: False)
             kwargs:
                 Batch size as 'batch_size' (for encoding large volumes of data)
         """
         z = self._encode(x_new)
         z_loc = z[:, :self.z_dim]
         z_scale = z[:, self.z_dim:2*self.z_dim]
-        alphas = z[:, 2*self.z_dim:]
-        _, pred_labels = torch.max(alphas, 1)
-        return z_loc, z_scale, pred_labels
+        classes = z[:, 2*self.z_dim:]
+        if not logits:
+            _, classes = torch.max(classes, 1)
+        return z_loc, z_scale, classes
 
     def decode(self, z: torch.Tensor, y: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
@@ -251,17 +263,10 @@ class jtrVAE(baseVAE):
                     boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3])
                     and plot parameters ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
         """
-        z_disc = to_onehot(tt(disc_idx).unsqueeze(0), self.discrete_dim)
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
-        z = z.to(self.device)
-        z = torch.cat([z, z_disc.repeat(z.shape[0], 1)], dim=-1)
-        z = [z]
-        if self.coord:
-            grid = [self.grid.expand(z[0].shape[0], *self.grid.shape)]
-            z = grid + z
-        with torch.no_grad():
-            loc = self.decoder(*z).cpu()
-        loc = loc.view(-1, *self.data_dim)
+        z_disc = to_onehot(tt(disc_idx).unsqueeze(0), self.discrete_dim)
+        z_disc = z_disc.repeat(z.shape[0], 1)
+        loc = self.decode(z, z_disc, **kwargs)
         if plot:
             if self.ndim == 2:
                 plot_img_grid(
@@ -271,3 +276,49 @@ class jtrVAE(baseVAE):
             elif self.ndim == 1:
                 plot_spect_grid(loc, d, **kwargs)
         return loc
+
+    def manifold_traversal(self, cont_idx: int, d: int, cont_idx_fixed: int = 0,
+                           plot: bool = True, **kwargs: Union[str, float]
+                           ) -> torch.Tensor:
+        """
+        Latent space traversal for joint continuous and discrete
+        latent representations
+
+        Args:
+            d: Grid size
+            cont_idx:
+                Continuous latent variable used for plotting
+                a latent manifold traversal
+            cont_idx_fixed:
+                Value which the remaining continuous latent variables are fixed at
+            plot:
+                Plots the generated manifold (Default: True)
+            kwargs:
+                Keyword arguments include custom min/max values for grid
+                boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3])
+                and plot parameters ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
+        """
+        num_samples = d**2
+        disc_dim = self.discrete_dim
+        cont_dim = self.z_dim - self.coord
+        data_dim = self.data_dim
+        # Get continuous latent coordinates
+        samples_cont = torch.zeros(size=(num_samples, cont_dim)) + cont_idx_fixed
+        cont_traversal = dist.Normal(0, 1).icdf(torch.linspace(0.95, 0.05, d))
+        for i in range(d):
+            for j in range(d):
+                samples_cont[i * d + j, cont_idx] = cont_traversal[j]
+        # Get discrete latent coordinates
+        n = torch.arange(0, disc_dim)
+        n = n.tile(d // disc_dim + 1)[:d]
+        samples_disc = []
+        for i in range(d):
+            samples_disc_i = torch.zeros((d, disc_dim))
+            samples_disc_i[:, n[i]] = 1
+            samples_disc.append(samples_disc_i)
+        samples_disc = torch.cat(samples_disc)
+        # Pass discrete and continuous latent coordinates through a decoder
+        decoded = self.decode(samples_cont, samples_disc)
+        if plot:
+            plot_grid_traversal(decoded, d, data_dim, disc_dim)
+        return decoded
