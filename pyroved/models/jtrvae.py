@@ -132,8 +132,10 @@ class jtrVAE(baseVAE):
         pyro.module("decoder", self.decoder)
         # KLD scale factor (see e.g. https://openreview.net/pdf?id=Sy2fzU9gl)
         beta = kwargs.get("scale_factor", [1., 1.])
-        if isinstance(beta, (float, int)):
-            beta = [beta, beta]
+        if isinstance(beta, (float, int, list)):
+            beta = torch.tensor(beta)
+        if beta.ndim == 0:
+            beta = torch.tensor([beta, beta])
         reshape_ = torch.prod(tt(x.shape[1:])).item()
         bdim = x.shape[0]
         with pyro.plate("data"):
@@ -177,8 +179,10 @@ class jtrVAE(baseVAE):
         pyro.module("encoder_z", self.encoder_z)
         # KLD scale factor (see e.g. https://openreview.net/pdf?id=Sy2fzU9gl)
         beta = kwargs.get("scale_factor", [1., 1.])
-        if isinstance(beta, (float, int)):
-            beta = [beta, beta]
+        if isinstance(beta, (float, int, list)):
+            beta = torch.tensor(beta)
+        if beta.ndim == 0:
+            beta = torch.tensor([beta, beta])
         with pyro.plate("data"):
             # use the encoder to get the parameters used to define q(z,c|x)
             z_loc, z_scale, alpha = self.encoder_z(x)
