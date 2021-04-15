@@ -253,23 +253,18 @@ class trVAE(baseVAE):
             plot: Plots the generated manifold (Default: True)
             kwargs: Keyword arguments include 'label' for class label (if any),
                     custom min/max values for grid boundaries passed as 'z_coord'
-                    (e.g. z_coord = [-3, 3, -3, 3]) and plot parameters
+                    (e.g. z_coord = [-3, 3, -3, 3]), 'angle' and 'shift' to condition
+                    a generative model on, and plot parameters
                     ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
         """
+        z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
+        z = [z]
         if self.num_classes > 0:
             cls = tt(kwargs.get("label", 0))
             if cls.ndim < 2:
                 cls = to_onehot(cls.unsqueeze(0), self.num_classes)
-        z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
-        z = z.to(self.device)
-        if self.num_classes > 0:
-            z = torch.cat([z, cls.repeat(z.shape[0], 1)], dim=-1)
-        z = [z]
-        if self.coord:
-            grid = [self.grid.expand(z[0].shape[0], *self.grid.shape)]
-            z = grid + z
-        with torch.no_grad():
-            loc = self.decoder(*z).cpu()
+            z = z + [cls.repeat(z[0].shape[0], 1)]
+        loc = self.decode(*z, **kwargs)
         if plot:
             if self.ndim == 2:
                 plot_img_grid(
