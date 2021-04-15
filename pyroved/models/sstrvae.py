@@ -368,5 +368,5 @@ class sstrVAE(baseVAE):
         # Pass discrete and continuous latent coordinates through a decoder
         decoded = self.decode(samples_cont, samples_disc, **kwargs)
         if plot:
-            plot_grid_traversal(decoded, d, data_dim, disc_dim)
+            plot_grid_traversal(decoded, d, data_dim, disc_dim, **kwargs)
         return decoded
