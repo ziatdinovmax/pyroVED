@@ -287,7 +287,7 @@ class sstrVAE(baseVAE):
         if y is None:
             y = self.classifier(x_new, **kwargs)
         if y.ndim < 2:
-            y = to_onehot(y, self.num_classes).cpu()
+            y = to_onehot(y, self.num_classes)
         z = self._encode(x_new, y, **kwargs)
         z_loc, z_scale = z.split(self.z_dim, 1)
         _, y_pred = torch.max(y, 1)
@@ -307,7 +307,7 @@ class sstrVAE(baseVAE):
         return loc.view(-1, *self.data_dim)
 
     def manifold2d(self, d: int, plot: bool = True,
-                   **kwargs: Union[str, int]) -> torch.Tensor:
+                   **kwargs: Union[str, int, float]) -> torch.Tensor:
         """
         Returns a learned latent manifold in the image space
 
@@ -316,22 +316,16 @@ class sstrVAE(baseVAE):
             plot: Plots the generated manifold (Default: True)
             kwargs: Keyword arguments include 'label' for class label (if any),
                     custom min/max values for grid boundaries passed as 'z_coord'
-                    (e.g. z_coord = [-3, 3, -3, 3]) and plot parameters
+                    (e.g. z_coord = [-3, 3, -3, 3]), 'angle' and 'shift' to
+                    condition a generative model one, and plot parameters
                     ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
         """
+        z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
         cls = tt(kwargs.get("label", 0))
         if cls.ndim < 2:
             cls = to_onehot(cls.unsqueeze(0), self.num_classes)
-        z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
-        z = z.to(self.device)
-        z = torch.cat([z, cls.repeat(z.shape[0], 1)], dim=-1)
-        z = [z]
-        if self.coord:
-            grid = [self.grid.expand(z[0].shape[0], *self.grid.shape)]
-            z = grid + z
-        with torch.no_grad():
-            loc = self.decoder(*z).cpu()
-        loc = loc.view(-1, *self.data_dim)
+        cls = cls.repeat(z.shape[0], 1)
+        loc = self.decode(z, cls, **kwargs)
         if plot:
             if self.ndim == 2:
                 plot_img_grid(
