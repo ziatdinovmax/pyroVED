@@ -67,3 +67,27 @@ def generate_latent_grid(d: int, **kwargs) -> torch.Tensor:
         for yi in grid_y:
             z.append(tt([xi, yi]).float().unsqueeze(0))
     return torch.cat(z), (grid_x, grid_y)
+
+
+def generate_latent_grid_traversal(d: int, cont_dim: int, disc_dim,
+                                   cont_idx: int, cont_idx_fixed: int,
+                                   num_samples: int) -> Tuple[torch.Tensor]:
+    """
+    Generates continuous and discrete grids for latent space traversal
+    """
+    # Get continuous latent coordinates
+    samples_cont = torch.zeros(size=(num_samples, cont_dim)) + cont_idx_fixed
+    cont_traversal = dist.Normal(0, 1).icdf(torch.linspace(0.95, 0.05, d))
+    for i in range(d):
+        for j in range(d):
+            samples_cont[i * d + j, cont_idx] = cont_traversal[j]
+    # Get discrete latent coordinates
+    n = torch.arange(0, disc_dim)
+    n = n.tile(d // disc_dim + 1)[:d]
+    samples_disc = []
+    for i in range(d):
+        samples_disc_i = torch.zeros((d, disc_dim))
+        samples_disc_i[:, n[i]] = 1
+        samples_disc.append(samples_disc_i)
+    samples_disc = torch.cat(samples_disc)
+    return samples_cont, samples_disc

@@ -16,7 +16,8 @@ import torch
 import torch.tensor as tt
 
 from ..nets import fcDecoderNet, jfcEncoderNet, sDecoderNet
-from ..utils import (generate_grid, generate_latent_grid, get_sampler,
+from ..utils import (generate_grid, generate_latent_grid,
+                     generate_latent_grid_traversal, get_sampler,
                      plot_grid_traversal, plot_img_grid, plot_spect_grid,
                      set_deterministic_mode, to_onehot, transform_coordinates)
 from .base import baseVAE
@@ -308,23 +309,11 @@ class jtrVAE(baseVAE):
         disc_dim = self.discrete_dim
         cont_dim = self.z_dim - self.coord
         data_dim = self.data_dim
-        # Get continuous latent coordinates
-        samples_cont = torch.zeros(size=(num_samples, cont_dim)) + cont_idx_fixed
-        cont_traversal = dist.Normal(0, 1).icdf(torch.linspace(0.95, 0.05, d))
-        for i in range(d):
-            for j in range(d):
-                samples_cont[i * d + j, cont_idx] = cont_traversal[j]
-        # Get discrete latent coordinates
-        n = torch.arange(0, disc_dim)
-        n = n.tile(d // disc_dim + 1)[:d]
-        samples_disc = []
-        for i in range(d):
-            samples_disc_i = torch.zeros((d, disc_dim))
-            samples_disc_i[:, n[i]] = 1
-            samples_disc.append(samples_disc_i)
-        samples_disc = torch.cat(samples_disc)
+        # Get continuous and discrete latent coordinates
+        samples_cont, samples_disc = generate_latent_grid_traversal(
+            d, cont_dim, disc_dim, cont_idx, cont_idx_fixed, num_samples)
         # Pass discrete and continuous latent coordinates through a decoder
         decoded = self.decode(samples_cont, samples_disc, **kwargs)
         if plot:
-            plot_grid_traversal(decoded, d, data_dim, disc_dim)
+            plot_grid_traversal(decoded, d, data_dim, disc_dim, **kwargs)
         return decoded

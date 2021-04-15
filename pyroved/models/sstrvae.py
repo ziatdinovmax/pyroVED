@@ -18,7 +18,8 @@ from .base import baseVAE
 from ..nets import fcDecoderNet, fcEncoderNet, sDecoderNet, fcClassifierNet
 from ..utils import (generate_grid, get_sampler, plot_img_grid,
                      plot_spect_grid, set_deterministic_mode, to_onehot,
-                     transform_coordinates, init_dataloader, generate_latent_grid)
+                     transform_coordinates, init_dataloader, generate_latent_grid,
+                     generate_latent_grid_traversal, plot_grid_traversal)
 
 
 class sstrVAE(baseVAE):
@@ -335,3 +336,37 @@ class sstrVAE(baseVAE):
             elif self.ndim == 1:
                 plot_spect_grid(loc, d, **kwargs)
         return loc
+
+    def manifold_traversal(self, d: int, cont_idx: int, cont_idx_fixed: int = 0,
+                           plot: bool = True, **kwargs: Union[str, int, float]
+                           ) -> torch.Tensor:
+        """
+        Latent space traversal for continuous and discrete latent variables
+
+        Args:
+            d: Grid size
+            cont_idx:
+                Continuous latent variable used for plotting
+                a latent manifold traversal
+            cont_idx_fixed:
+                Value which the remaining continuous latent variables are fixed at
+            plot:
+                Plots the generated manifold (Default: True)
+            kwargs:
+                Keyword arguments include custom min/max values for grid
+                boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3]),
+                'angle' and 'shift' to condition a generative model one,
+                and plot parameters ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
+        """
+        num_samples = d**2
+        disc_dim = self.num_classes
+        cont_dim = self.z_dim - self.coord
+        data_dim = self.data_dim
+        # Get continuous and discrete latent coordinates
+        samples_cont, samples_disc = generate_latent_grid_traversal(
+            d, cont_dim, disc_dim, cont_idx, cont_idx_fixed, num_samples)
+        # Pass discrete and continuous latent coordinates through a decoder
+        decoded = self.decode(samples_cont, samples_disc, **kwargs)
+        if plot:
+            plot_grid_traversal(decoded, d, data_dim, disc_dim, **kwargs)
+        return decoded
