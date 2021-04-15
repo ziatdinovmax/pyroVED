@@ -244,7 +244,7 @@ class trVAE(baseVAE):
         return loc
 
     def manifold2d(self, d: int, plot: bool = True,
-                   **kwargs: Union[str, int]) -> torch.Tensor:
+                   **kwargs: Union[str, int, float]) -> torch.Tensor:
         """
         Plots a learned latent manifold in the image space
 

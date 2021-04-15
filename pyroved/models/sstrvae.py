@@ -307,7 +307,7 @@ class sstrVAE(baseVAE):
         return loc.view(-1, *self.data_dim)
 
     def manifold2d(self, d: int, plot: bool = True,
-                   **kwargs: Union[str, int]) -> torch.Tensor:
+                   **kwargs: Union[str, int, float]) -> torch.Tensor:
         """
         Returns a learned latent manifold in the image space
 
@@ -316,7 +316,8 @@ class sstrVAE(baseVAE):
             plot: Plots the generated manifold (Default: True)
             kwargs: Keyword arguments include 'label' for class label (if any),
                     custom min/max values for grid boundaries passed as 'z_coord'
-                    (e.g. z_coord = [-3, 3, -3, 3]) and plot parameters
+                    (e.g. z_coord = [-3, 3, -3, 3]), 'angle' and 'shift' to
+                    condition a generative model one, and plot parameters
                     ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
         """
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)

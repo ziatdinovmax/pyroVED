@@ -251,7 +251,7 @@ class jtrVAE(baseVAE):
         return loc.view(-1, *self.data_dim)
 
     def manifold2d(self, d: int, disc_idx: int = 0, plot: bool = True,
-                   **kwargs: Union[str, int]) -> torch.Tensor:
+                   **kwargs: Union[str, int, float]) -> torch.Tensor:
         """
         Plots a learned latent manifold in the image space
 
@@ -260,7 +260,8 @@ class jtrVAE(baseVAE):
             disc_idx: Discrete dimension for which we plot continuous latent manifolds
             plot: Plots the generated manifold (Default: True)
             kwargs: Keyword arguments include custom min/max values for grid
-                    boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3])
+                    boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3]),
+                    'angle' and 'shift' to condition a generative model on,
                     and plot parameters ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
         """
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
@@ -277,8 +278,8 @@ class jtrVAE(baseVAE):
                 plot_spect_grid(loc, d, **kwargs)
         return loc
 
-    def manifold_traversal(self, cont_idx: int, d: int, cont_idx_fixed: int = 0,
-                           plot: bool = True, **kwargs: Union[str, float]
+    def manifold_traversal(self, d: int, cont_idx: int, cont_idx_fixed: int = 0,
+                           plot: bool = True, **kwargs: Union[str, int, float]
                            ) -> torch.Tensor:
         """
         Latent space traversal for joint continuous and discrete
@@ -295,7 +296,8 @@ class jtrVAE(baseVAE):
                 Plots the generated manifold (Default: True)
             kwargs:
                 Keyword arguments include custom min/max values for grid
-                boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3])
+                boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3]),
+                'angle' and 'shift' to condition a generative model one,
                 and plot parameters ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
         """
         num_samples = d**2
@@ -318,7 +320,7 @@ class jtrVAE(baseVAE):
             samples_disc.append(samples_disc_i)
         samples_disc = torch.cat(samples_disc)
         # Pass discrete and continuous latent coordinates through a decoder
-        decoded = self.decode(samples_cont, samples_disc)
+        decoded = self.decode(samples_cont, samples_disc, **kwargs)
         if plot:
             plot_grid_traversal(decoded, d, data_dim, disc_dim)
         return decoded
