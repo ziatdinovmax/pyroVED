@@ -30,18 +30,18 @@ class jtrVAE(baseVAE):
 
     Args:
         data_dim:
-            Dimensionality of the input data; use (h x w) for images
+            Dimensionality of the input data; (h x w) for images
             or (length,) for spectra.
         latent_dim:
             Number of continuous latent dimensions.
         discrete_dim:
-            Number of discrete latent dimensions
+            Number of discrete latent dimensions.
         coord:
             For 2D systems, *coord=0* is vanilla VAE, *coord=1* enforces
             rotational invariance, *coord=2* enforces invariance to translations,
             and *coord=3* enforces both rotational and translational invariances.
             For 1D systems, *coord=0* is vanilla VAE and *coord>0* enforces
-            transaltional invariance.
+            translational invariance.
         hidden_dim_e:
             Number of hidden units per each layer in encoder (inference network).
         hidden_dim_d:
@@ -53,17 +53,17 @@ class jtrVAE(baseVAE):
         activation:
             Non-linear activation for inner layers of encoder and decoder.
             The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
-            hyberbolic tangent ('tanh'), and softplus ('softplus')
+            hyberbolic tangent ('tanh'), and softplus ('softplus').
             The default activation is 'tanh'.
         sampler_d:
             Decoder sampler, as defined as p(x|z) = sampler(decoder(z)).
             The available samplers are 'bernoulli', 'continuous_bernoulli',
             and 'gaussian' (Default: 'bernoulli').
         sigmoid_d:
-            Sigmoid activation for the decoder output (Default: True)
+            Sigmoid activation for the decoder output (Default: True).
         seed:
             Seed used in torch.manual_seed(seed) and
-            torch.cuda.manual_seed_all(seed)
+            torch.cuda.manual_seed_all(seed).
         kwargs:
             Additional keyword arguments are *dx_prior* and *dy_prior* for setting
             a translational prior(s), and *decoder_sig* for setting sigma
@@ -93,7 +93,7 @@ class jtrVAE(baseVAE):
                  **kwargs: float
                  ) -> None:
         """
-        Initializes trVAE's modules and parameters
+        Initializes jtrVAE's modules and parameters
         """
         super(jtrVAE, self).__init__()
         pyro.clear_param_store()
@@ -226,13 +226,13 @@ class jtrVAE(baseVAE):
 
         Args:
             x_new:
-                Data to encode with a trained trVAE. The new data must have
+                Data to encode with a trained jtrVAE. The new data must have
                 the same dimensions (images height and width or spectra length)
                 as the one used for training.
             logits:
-                Return raw class probabilities (Default: False)
+                Return raw class probabilities (Default: False).
             kwargs:
-                Batch size as 'batch_size' (for encoding large volumes of data)
+                Batch size as 'batch_size' (for encoding large volumes of data).
         """
         z = self._encode(x_new)
         z_loc = z[:, :self.z_dim]
@@ -257,7 +257,7 @@ class jtrVAE(baseVAE):
     def manifold2d(self, d: int, disc_idx: int = 0, plot: bool = True,
                    **kwargs: Union[str, int, float]) -> torch.Tensor:
         """
-        Plots a learned latent manifold in the image space
+        Plots a learned latent manifold in the data space
 
         Args:
             d: Grid size
