@@ -8,6 +8,7 @@ Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
 
 from typing import Optional, Tuple, Union
+from warnings import warn, filterwarnings
 
 import pyro
 import pyro.distributions as dist
@@ -63,22 +64,7 @@ class trVAE(baseVAE):
     >>> rvae = trVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
     """
 
-    def __init__(
-        self,
-        data_dim: Tuple[int],
-        latent_dim: int = 2,
-        coord: int = 3,
-        num_classes: int = 0,
-        hidden_dim_e: int = 128,
-        hidden_dim_d: int = 128,
-        num_layers_e: int = 2,
-        num_layers_d: int = 2,
-        activation: str = "tanh",
-        sampler_d: str = "bernoulli",
-        sigmoid_d: bool = True,
-        seed: int = 1,
-        **kwargs: float
-    ) -> None:
+    def __init__(self, data_dim: Tuple[int], latent_dim: int = 2, coord: int = 3, num_classes: int = 0, hidden_dim_e: int = 128, hidden_dim_d: int = 128, num_layers_e: int = 2, num_layers_d: int = 2, activation: str = "tanh", sampler_d: str = "bernoulli", sigmoid_d: bool = True, seed: int = 1, **kwargs: float) -> None:
         """Initializes trVAE's modules and parameters.
 
         Parameters
@@ -92,7 +78,7 @@ class trVAE(baseVAE):
             sigma in the decoder's sampler when it is set to "gaussian".
         latent_dim : {int}, optional
             Number of latent dimensions.
-        coord : {int}, optional
+        coord : {0, 1, 2, 3}, optional
             For 2D systems, `coord=0` is vanilla VAE, `coord=1` enforces
             rotational invariance, `coord=2` enforces invariance to
             translations, and `coord=3` enforces both rotational and
@@ -127,23 +113,43 @@ class trVAE(baseVAE):
         seed : {int}, optional
             Seed used in torch.manual_seed(seed) and
             torch.cuda.manual_seed_all(seed). (The default is 1).
+
+        Raises
+        ------
+        ValueError
+            If coord is not equal to 0, 1, 2 or 3.
         """
 
+        if coord not in [0, 1, 2, 3]:
+            raise ValueError("`coord` argument must be 0, 1, 2 or 3")
+
         super(trVAE, self).__init__()
+
+        # Reset the pyro ParamStoreDict object's dictionaries.
         pyro.clear_param_store()
-        set_deterministic_mode(seed)
+
+        set_deterministic_mode(seed)  # Set all torch manual seeds
+
+        # Silently assign coord=1 for one-dimensional data when user-supplied
+        # coord value > 0.
         self.ndim = len(data_dim)
         if self.ndim == 1 and coord > 0:
             coord = 1
+
+        # Initialize the encoder network
         self.encoder_z = fcEncoderNet(
-            data_dim, latent_dim+coord, 0, hidden_dim_e,
-            num_layers_e, activation, softplus_out=True)
-        if coord not in [0, 1, 2, 3]:
-            raise ValueError("'coord' argument must be 0, 1, 2 or 3")
+            data_dim, latent_dim + coord, 0, hidden_dim_e, num_layers_e,
+            activation, softplus_out=True
+        )
+
+        # Initialize the decoder network
         dnet = sDecoderNet if coord in [1, 2, 3] else fcDecoderNet
         self.decoder = dnet(
-            data_dim, latent_dim, num_classes, hidden_dim_d,
-            num_layers_d, activation, sigmoid_out=sigmoid_d)
+            data_dim, latent_dim, num_classes, hidden_dim_d, num_layers_d,
+            activation, sigmoid_out=sigmoid_d
+        )
+
+        # Initialize the sampler
         self.sampler_d = get_sampler(sampler_d, **kwargs)
         self.z_dim = latent_dim + coord
         self.coord = coord
