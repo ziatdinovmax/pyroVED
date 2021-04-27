@@ -139,6 +139,8 @@ class trVAE(baseVAE):
 
         super(trVAE, self).__init__()
 
+        self.coord = coord
+
         # Reset the pyro ParamStoreDict object's dictionaries.
         pyro.clear_param_store()
 
