@@ -155,9 +155,9 @@ class trVAE(baseVAE):
         self.coord = coord
         self.num_classes = num_classes
         self.grid = generate_grid(data_dim).to(self.device)
-        dx_pri = tt(kwargs.get("dx_prior", 0.1))
+        dx_pri = torch.tensor(kwargs.get("dx_prior", 0.1))
         dy_pri = kwargs.get("dy_prior", dx_pri.clone())
-        t_prior = tt([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
+        t_prior = torch.tensor([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
         self.t_prior = t_prior.to(self.device)
         self.to(self.device)
 
@@ -172,7 +172,7 @@ class trVAE(baseVAE):
         pyro.module("decoder", self.decoder)
         # KLD scale factor (see e.g. https://openreview.net/pdf?id=Sy2fzU9gl)
         beta = kwargs.get("scale_factor", 1.)
-        reshape_ = torch.prod(tt(x.shape[1:])).item()
+        reshape_ = torch.prod(torch.tensor(x.shape[1:])).item()
         with pyro.plate("data", x.shape[0]):
             # setup hyperparameters for prior p(z)
             z_loc = x.new_zeros(torch.Size((x.shape[0], self.z_dim)))
@@ -228,7 +228,7 @@ class trVAE(baseVAE):
             dx = z[:, 0:1]
             z = z[:, 1:]
             return None, dx, z
-        phi, dx = tt(0), tt(0)
+        phi, dx = torch.tensor(0), torch.tensor(0)
         # rotation + translation
         if self.coord == 3:
             phi = z[:, 0]  # encoded angle
@@ -295,7 +295,7 @@ class trVAE(baseVAE):
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
         z = [z]
         if self.num_classes > 0:
-            cls = tt(kwargs.get("label", 0))
+            cls = torch.tensor(kwargs.get("label", 0))
             if cls.ndim < 2:
                 cls = to_onehot(cls.unsqueeze(0), self.num_classes)
             z = z + [cls.repeat(z[0].shape[0], 1)]
