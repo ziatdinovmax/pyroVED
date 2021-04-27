@@ -27,52 +27,29 @@ class trVAE(baseVAE):
     """Variational autoencoder that enforces rotational and/or translational
     invariances.
 
-    Args:
-        data_dim:
-            Dimensionality of the input data; use (h x w) for images
-            or (length,) for spectra.
-        latent_dim:
-            Number of latent dimensions.
-        coord:
-            For 2D systems, *coord=0* is vanilla VAE, *coord=1* enforces
-            rotational invariance, *coord=2* enforces invariance to translations,
-            and *coord=3* enforces both rotational and translational invariances.
-            For 1D systems, *coord=0* is vanilla VAE and *coord>0* enforces
-            transaltional invariance.
-        num_classes:
-            Number of classes (if any) for class-conditioned (t)(r)VAE.
-        hidden_dim_e:
-            Number of hidden units per each layer in encoder (inference network).
-            The default value is 128.
-        hidden_dim_d:
-            Number of hidden units per each layer in decoder (generator network).
-            The default value is 128.
-        num_layers_e:
-            Number of layers in encoder (inference network).
-            The default value is 2.
-        num_layers_d:
-            Number of layers in decoder (generator network).
-            The default value is 2.
-        activation:
-            Non-linear activation for inner layers of encoder and decoder.
-            The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
-            hyberbolic tangent ('tanh'), and softplus ('softplus')
-            The default activation is 'tanh'.
-        sampler_d:
-            Decoder sampler, as defined as p(x|z) = sampler(decoder(z)).
-            The available samplers are 'bernoulli', 'continuous_bernoulli',
-            and 'gaussian' (Default: 'bernoulli').
-        sigmoid_d:
-            Sigmoid activation for the decoder output (Default: True)
-        seed:
-            Seed used in torch.manual_seed(seed) and
-            torch.cuda.manual_seed_all(seed)
-        kwargs:
-            Additional keyword arguments are *dx_prior* and *dy_prior* for setting
-            a translational prior(s), and *decoder_sig* for setting sigma
-            in the decoder's sampler when it is set to "gaussian".
+    Attributes
+    ----------
+    coord : TYPE
+        Description
+    decoder : TYPE
+        Description
+    encoder_z : TYPE
+        Description
+    grid : TYPE
+        Description
+    ndim : TYPE
+        Description
+    num_classes : TYPE
+        Description
+    sampler_d : TYPE
+        Description
+    t_prior : TYPE
+        Description
+    z_dim : TYPE
+        Description
 
-    Example:
+    Examples
+    --------
 
     Initialize a VAE model with rotational invariance
 
@@ -85,6 +62,7 @@ class trVAE(baseVAE):
     >>> data_dim = (28, 28)
     >>> rvae = trVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
     """
+
     def __init__(
         self,
         data_dim: Tuple[int],
@@ -106,31 +84,49 @@ class trVAE(baseVAE):
         Parameters
         ----------
         data_dim : {Tuple[int]}
-            [description]
-        **kwargs : {[type]}
-            [description]
+            Dimensionality of the input data; use (height x width) for images
+            or (length,) for spectra.
+        **kwargs : {float}
+            Additional keyword arguments are *dx_prior* and *dy_prior* for
+            setting a translational prior(s), and *decoder_sig* for setting
+            sigma in the decoder's sampler when it is set to "gaussian".
         latent_dim : {int}, optional
-            [description] (the default is 2, which [default_description])
+            Number of latent dimensions.
         coord : {int}, optional
-            [description] (the default is 3, which [default_description])
+            For 2D systems, `coord=0` is vanilla VAE, `coord=1` enforces
+            rotational invariance, `coord=2` enforces invariance to
+            translations, and `coord=3` enforces both rotational and
+            translational invariances. For 1D systems, `coord=0` is vanilla VAE
+            and `coord>0` enforces transaltional invariance.
         num_classes : {int}, optional
-            [description] (the default is 0, which [default_description])
+            Number of classes (if any) for class-conditioned (t)(r)VAE (The
+            default is 0).
         hidden_dim_e : {int}, optional
-            [description] (the default is 128, which [default_description])
+            Number of hidden units per each layer in encoder (inference
+            network). (The default is 128).
         hidden_dim_d : {int}, optional
-            [description] (the default is 128, which [default_description])
+            Number of hidden units per each layer in decoder (generator
+            network). (The default is 128).
         num_layers_e : {int}, optional
-            [description] (the default is 2, which [default_description])
+            Number of layers in encoder (inference network). (The default is
+            2).
         num_layers_d : {int}, optional
-            [description] (the default is 2, which [default_description])
-        activation : {str}, optional
-            [description] (the default is "tanh", which [default_description])
-        sampler_d : {str}, optional
-            [description] (the default is "bernoulli", which [default_description])
+            Number of layers in decoder (generator network). (The default is
+            2).
+        activation : {'relu', 'lrelu', 'tanh', 'softplus'}, optional
+            Non-linear activation for inner layers of encoder and decoder.
+            The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
+            hyberbolic tangent ('tanh'), and softplus ('softplus')
+            The default activation is 'tanh'. (The default is "tanh").
+        sampler_d : {'bernoulli', 'continuous_bernoulli', 'gaussian'}, optional
+            Decoder sampler, as defined as p(x|z) = sampler(decoder(z)).
+            The available samplers are 'bernoulli', 'continuous_bernoulli',
+            and 'gaussian'. (The default is "bernoulli").
         sigmoid_d : {bool}, optional
-            [description] (the default is True, which [default_description])
+            Sigmoid activation for the decoder output. (The default is True).
         seed : {int}, optional
-            [description] (the default is 1, which [default_description])
+            Seed used in torch.manual_seed(seed) and
+            torch.cuda.manual_seed_all(seed). (The default is 1).
         """
 
         super(trVAE, self).__init__()
