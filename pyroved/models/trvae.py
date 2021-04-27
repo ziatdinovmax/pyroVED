@@ -13,7 +13,6 @@ from warnings import warn, filterwarnings
 import pyro
 import pyro.distributions as dist
 import torch
-import torch.tensor as tt
 
 from pyroved.models.base import baseVAE
 from pyroved.nets import fcDecoderNet, fcEncoderNet, sDecoderNet
@@ -125,6 +124,8 @@ class trVAE(baseVAE):
 
         super(trVAE, self).__init__()
 
+        self.coord = coord
+
         # Reset the pyro ParamStoreDict object's dictionaries.
         pyro.clear_param_store()
 
@@ -133,17 +134,17 @@ class trVAE(baseVAE):
         # Silently assign coord=1 for one-dimensional data when user-supplied
         # coord value > 0.
         self.ndim = len(data_dim)
-        if self.ndim == 1 and coord > 0:
-            coord = 1
+        if self.ndim == 1 and self.coord > 0:
+            self.coord = 1
 
         # Initialize the encoder network
         self.encoder_z = fcEncoderNet(
-            data_dim, latent_dim + coord, 0, hidden_dim_e, num_layers_e,
+            data_dim, latent_dim + self.coord, 0, hidden_dim_e, num_layers_e,
             activation, softplus_out=True
         )
 
         # Initialize the decoder network
-        dnet = sDecoderNet if coord in [1, 2, 3] else fcDecoderNet
+        dnet = sDecoderNet if self.coord in [1, 2, 3] else fcDecoderNet
         self.decoder = dnet(
             data_dim, latent_dim, num_classes, hidden_dim_d, num_layers_d,
             activation, sigmoid_out=sigmoid_d
@@ -151,8 +152,7 @@ class trVAE(baseVAE):
 
         # Initialize the sampler
         self.sampler_d = get_sampler(sampler_d, **kwargs)
-        self.z_dim = latent_dim + coord
-        self.coord = coord
+        self.z_dim = latent_dim + self.coord
         self.num_classes = num_classes
         self.grid = generate_grid(data_dim).to(self.device)
         dx_pri = torch.tensor(kwargs.get("dx_prior", 0.1))
