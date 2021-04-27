@@ -24,28 +24,23 @@ from pyroved.utils import (
 
 class trVAE(baseVAE):
     """Variational autoencoder that enforces rotational and/or translational
-    invariances.
+    invariances. Attributes not documented here are documented in the __init__.
 
     Attributes
     ----------
-    coord : TYPE
-        Description
-    decoder : TYPE
-        Description
-    encoder_z : TYPE
-        Description
-    grid : TYPE
-        Description
-    ndim : TYPE
-        Description
-    num_classes : TYPE
-        Description
-    sampler_d : TYPE
-        Description
-    t_prior : TYPE
-        Description
-    z_dim : TYPE
-        Description
+    decoder : {fcDecoderNet, sDecoderNet}
+        The decoder network.
+    encoder_z : {fcEncoderNet}
+        The encoder network
+    grid : {torch.tensor}
+        Either a 1d or 2d meshgrid consisting of a grid between -1 and 1.
+        Always a 2d object.
+    ndim : {int}
+        The total number of dimensions of the input object.
+    t_prior : {torch.tensor}
+        TODO
+    z_dim : {int}
+        The latent space dimension including coord.
 
     Examples
     --------
@@ -174,9 +169,14 @@ class trVAE(baseVAE):
 
         self.num_classes = num_classes
         self.grid = generate_grid(data_dim).to(self.device)
+
+        # TODO: it is not clear what this does --------------------------------
         dx_pri = torch.tensor(kwargs.get("dx_prior", 0.1))
         dy_pri = kwargs.get("dy_prior", dx_pri.clone())
         t_prior = torch.tensor([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
+        # ---------------------------------------------------------------------
+
+        # Send objects to their appropriate devices.
         self.t_prior = t_prior.to(self.device)
         self.to(self.device)
 
