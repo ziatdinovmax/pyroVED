@@ -6,6 +6,7 @@ Variational autoencoder with rotational and/or translational invariances
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
+
 from typing import Optional, Tuple, Union
 
 import pyro
@@ -13,16 +14,18 @@ import pyro.distributions as dist
 import torch
 import torch.tensor as tt
 
-from .base import baseVAE
-from ..nets import fcDecoderNet, fcEncoderNet, sDecoderNet
-from ..utils import (generate_grid, generate_latent_grid, get_sampler,
-                     plot_img_grid, plot_spect_grid, set_deterministic_mode,
-                     to_onehot, transform_coordinates)
+from pyroved.models.base import baseVAE
+from pyroved.nets import fcDecoderNet, fcEncoderNet, sDecoderNet
+from pyroved.utils import (
+    generate_grid, generate_latent_grid, get_sampler,
+    plot_img_grid, plot_spect_grid, set_deterministic_mode,
+    to_onehot, transform_coordinates
+)
 
 
 class trVAE(baseVAE):
-    """
-    Variational autoencoder that enforces rotational and/or translational invariances
+    """Variational autoencoder that enforces rotational and/or translational
+    invariances.
 
     Args:
         data_dim:
@@ -82,24 +85,54 @@ class trVAE(baseVAE):
     >>> data_dim = (28, 28)
     >>> rvae = trVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
     """
-    def __init__(self,
-                 data_dim: Tuple[int],
-                 latent_dim: int = 2,
-                 coord: int = 3,
-                 num_classes: int = 0,
-                 hidden_dim_e: int = 128,
-                 hidden_dim_d: int = 128,
-                 num_layers_e: int = 2,
-                 num_layers_d: int = 2,
-                 activation: str = "tanh",
-                 sampler_d: str = "bernoulli",
-                 sigmoid_d: bool = True,
-                 seed: int = 1,
-                 **kwargs: float
-                 ) -> None:
+    def __init__(
+        self,
+        data_dim: Tuple[int],
+        latent_dim: int = 2,
+        coord: int = 3,
+        num_classes: int = 0,
+        hidden_dim_e: int = 128,
+        hidden_dim_d: int = 128,
+        num_layers_e: int = 2,
+        num_layers_d: int = 2,
+        activation: str = "tanh",
+        sampler_d: str = "bernoulli",
+        sigmoid_d: bool = True,
+        seed: int = 1,
+        **kwargs: float
+    ) -> None:
+        """Initializes trVAE's modules and parameters.
+
+        Parameters
+        ----------
+        data_dim : {Tuple[int]}
+            [description]
+        **kwargs : {[type]}
+            [description]
+        latent_dim : {int}, optional
+            [description] (the default is 2, which [default_description])
+        coord : {int}, optional
+            [description] (the default is 3, which [default_description])
+        num_classes : {int}, optional
+            [description] (the default is 0, which [default_description])
+        hidden_dim_e : {int}, optional
+            [description] (the default is 128, which [default_description])
+        hidden_dim_d : {int}, optional
+            [description] (the default is 128, which [default_description])
+        num_layers_e : {int}, optional
+            [description] (the default is 2, which [default_description])
+        num_layers_d : {int}, optional
+            [description] (the default is 2, which [default_description])
+        activation : {str}, optional
+            [description] (the default is "tanh", which [default_description])
+        sampler_d : {str}, optional
+            [description] (the default is "bernoulli", which [default_description])
+        sigmoid_d : {bool}, optional
+            [description] (the default is True, which [default_description])
+        seed : {int}, optional
+            [description] (the default is 1, which [default_description])
         """
-        Initializes trVAE's modules and parameters
-        """
+
         super(trVAE, self).__init__()
         pyro.clear_param_store()
         set_deterministic_mode(seed)
