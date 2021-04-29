@@ -70,8 +70,10 @@ class trVAE(baseVAE):
             torch.cuda.manual_seed_all(seed). (The default is 1).
         **kwargs:
             Additional keyword arguments are *dx_prior* and *dy_prior* for
-            setting a translational prior(s), and *decoder_sig* for setting
-            sigma in the decoder's sampler when it is set to "gaussian".
+            setting a translational prior(s) (i.e., a guess as to the degree
+            of translational invariance in the system., and *decoder_sig* for
+            setting sigma in the decoder's sampler when it is set to
+            "gaussian".
 
     Raises:
         ValueError:
@@ -149,11 +151,11 @@ class trVAE(baseVAE):
         self.num_classes = num_classes
         self.grid = generate_grid(data_dim).to(self.device)
 
-        # TODO: it is not clear what this does --------------------------------
+        # Allows the user to pass prior belief as to the degree of
+        # translational invariance in their system.
         dx_pri = torch.tensor(kwargs.get("dx_prior", 0.1))
         dy_pri = kwargs.get("dy_prior", dx_pri.clone())
         t_prior = torch.tensor([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
-        # ---------------------------------------------------------------------
 
         # Send objects to their appropriate devices.
         self.t_prior = t_prior.to(self.device)
