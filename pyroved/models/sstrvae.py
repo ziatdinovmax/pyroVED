@@ -78,6 +78,7 @@ class sstrVAE(baseVAE):
                  data_dim: Tuple[int],
                  latent_dim: int,
                  num_classes: int,
+                 use_gpu: bool = False,
                  coord: int = 3,
                  hidden_dim_e: int = 128,
                  hidden_dim_d: int = 128,
@@ -93,7 +94,7 @@ class sstrVAE(baseVAE):
         """
         Initializes sstrVAE parameters
         """
-        super(sstrVAE, self).__init__()
+        super(sstrVAE, self).__init__(use_gpu)
         pyro.clear_param_store()
         set_deterministic_mode(seed)
         if coord not in [0, 1, 2, 3]:

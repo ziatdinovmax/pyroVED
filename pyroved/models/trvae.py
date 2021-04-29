@@ -93,6 +93,7 @@ class trVAE(baseVAE):
     def __init__(
         self,
         data_dim: Tuple[int],
+        use_gpu: bool = False,
         latent_dim: int = 2,
         coord: int = 3,
         num_classes: int = 0,
@@ -110,7 +111,7 @@ class trVAE(baseVAE):
         if coord not in [0, 1, 2, 3]:
             raise ValueError("`coord` argument must be 0, 1, 2 or 3")
 
-        super(trVAE, self).__init__()
+        super(trVAE, self).__init__(use_gpu)
 
         self.coord = coord
 
