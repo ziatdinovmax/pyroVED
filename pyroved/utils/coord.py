@@ -19,26 +19,19 @@ def imcoordgrid(im_dim: Tuple[int]) -> torch.Tensor:
 
 
 def generate_grid(data_dim: Tuple[int]) -> torch.Tensor:
-    """Generates 1D or 2D grid of coordinates.
+    """Generates 1D or 2D grid of coordinates. Returns a torch tensor with two
+    axes. If the input data_dim indicates only one dimensional data, then the
+    output will be a 2d torch tensor artificially augmented along the last
+    dimension, of shape [N, 1].
 
-    Parameters
-    ----------
-    data_dim : {Tuple[int]}
-        Dimensions of the input data.
+    Args:
+        data_dim :
+            Dimensions of the input data.
 
-    Returns
-    -------
-    torch.Tensor
-        Returns a torch tensor with two axes. If the input data_dim indicates
-        only one dimensional data, then the output will be a 2d torch
-        tensor artificially augmented along the last dimension, of shape
-        [N, 1].
-
-    Raises
-    ------
-    NotImplementedError
-        If the dimension (length) of the provided data_dim is not equal to
-        1 or 2.
+    Raises:
+        NotImplementedError
+            If the dimension (length) of the provided data_dim is not equal to
+            1 or 2.
     """
 
     if len(data_dim) not in [1, 2]:
