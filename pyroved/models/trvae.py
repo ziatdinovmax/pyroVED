@@ -24,37 +24,70 @@ from pyroved.utils import (
 
 class trVAE(baseVAE):
     """Variational autoencoder that enforces rotational and/or translational
-    invariances. Attributes not documented here are documented in the __init__.
+    invariances..
 
-    Attributes
-    ----------
-    decoder : {fcDecoderNet, sDecoderNet}
-        The decoder network.
-    encoder_z : {fcEncoderNet}
-        The encoder network
-    grid : {torch.tensor}
-        Either a 1d or 2d meshgrid consisting of a grid between -1 and 1.
-        Always a 2d object.
-    ndim : {int}
-        The total number of dimensions of the input object.
-    t_prior : {torch.tensor}
-        TODO
-    z_dim : {int}
-        The latent space dimension including coord.
+    Args:
+        data_dim
+            Dimensionality of the input data; use (height x width) for images
+            or (length,) for spectra.
+        latent_dim
+            Number of latent dimensions.
+        coord
+            For 2D systems, `coord=0` is vanilla VAE, `coord=1` enforces
+            rotational invariance, `coord=2` enforces invariance to
+            translations, and `coord=3` enforces both rotational and
+            translational invariances. For 1D systems, `coord=0` is vanilla VAE
+            and `coord>0` enforces transaltional invariance. Must be 0, 1, 2 or
+            3.
+        num_classes
+            Number of classes (if any) for class-conditioned (t)(r)VAE (The
+            default is 0).
+        hidden_dim_e
+            Number of hidden units per each layer in encoder (inference
+            network). (The default is 128).
+        hidden_dim_d
+            Number of hidden units per each layer in decoder (generator
+            network). (The default is 128).
+        num_layers_e
+            Number of layers in encoder (inference network). (The default is
+            2).
+        num_layers_d
+            Number of layers in decoder (generator network). (The default is
+            2).
+        activation
+            Non-linear activation for inner layers of encoder and decoder.
+            The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
+            hyberbolic tangent ('tanh'), and softplus ('softplus')
+            The default activation is 'tanh'. (The default is "tanh").
+        sampler_d
+            Decoder sampler, as defined as p(x|z) = sampler(decoder(z)).
+            The available samplers are 'bernoulli', 'continuous_bernoulli',
+            and 'gaussian'. (The default is "bernoulli").
+        sigmoid_d
+            Sigmoid activation for the decoder output. (The default is True).
+        seed
+            Seed used in torch.manual_seed(seed) and
+            torch.cuda.manual_seed_all(seed). (The default is 1).
+        **kwargs
+            Additional keyword arguments are *dx_prior* and *dy_prior* for
+            setting a translational prior(s), and *decoder_sig* for setting
+            sigma in the decoder's sampler when it is set to "gaussian".
 
-    Examples
-    --------
+    Raises:
+        ValueError
+            If coord is not equal to 0, 1, 2 or 3.
 
-    Initialize a VAE model with rotational invariance
+    Examples:
+        Initialize a VAE model with rotational invariance
 
-    >>> data_dim = (28, 28)
-    >>> rvae = trVAE(data_dim, latent_dim=2, coord=1)
+        >>> data_dim = (28, 28)
+        >>> rvae = trVAE(data_dim, latent_dim=2, coord=1)
 
-    Initialize a class-conditioned VAE model with rotational invariance
-    for dataset that has 10 classes
+        Initialize a class-conditioned VAE model with rotational invariance
+        for dataset that has 10 classes
 
-    >>> data_dim = (28, 28)
-    >>> rvae = trVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
+        >>> data_dim = (28, 28)
+        >>> rvae = trVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
     """
 
     def __init__(
@@ -73,64 +106,9 @@ class trVAE(baseVAE):
         seed: int = 1,
         **kwargs: float
     ) -> None:
-        """Initializes trVAE's modules and parameters.
-
-        Parameters
-        ----------
-        data_dim : {Tuple[int]}
-            Dimensionality of the input data; use (height x width) for images
-            or (length,) for spectra.
-        **kwargs : {float}
-            Additional keyword arguments are *dx_prior* and *dy_prior* for
-            setting a translational prior(s), and *decoder_sig* for setting
-            sigma in the decoder's sampler when it is set to "gaussian".
-        latent_dim : {int}, optional
-            Number of latent dimensions.
-        coord : {0, 1, 2, 3}, optional
-            For 2D systems, `coord=0` is vanilla VAE, `coord=1` enforces
-            rotational invariance, `coord=2` enforces invariance to
-            translations, and `coord=3` enforces both rotational and
-            translational invariances. For 1D systems, `coord=0` is vanilla VAE
-            and `coord>0` enforces transaltional invariance.
-        num_classes : {int}, optional
-            Number of classes (if any) for class-conditioned (t)(r)VAE (The
-            default is 0).
-        hidden_dim_e : {int}, optional
-            Number of hidden units per each layer in encoder (inference
-            network). (The default is 128).
-        hidden_dim_d : {int}, optional
-            Number of hidden units per each layer in decoder (generator
-            network). (The default is 128).
-        num_layers_e : {int}, optional
-            Number of layers in encoder (inference network). (The default is
-            2).
-        num_layers_d : {int}, optional
-            Number of layers in decoder (generator network). (The default is
-            2).
-        activation : {'relu', 'lrelu', 'tanh', 'softplus'}, optional
-            Non-linear activation for inner layers of encoder and decoder.
-            The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
-            hyberbolic tangent ('tanh'), and softplus ('softplus')
-            The default activation is 'tanh'. (The default is "tanh").
-        sampler_d : {'bernoulli', 'continuous_bernoulli', 'gaussian'}, optional
-            Decoder sampler, as defined as p(x|z) = sampler(decoder(z)).
-            The available samplers are 'bernoulli', 'continuous_bernoulli',
-            and 'gaussian'. (The default is "bernoulli").
-        sigmoid_d : {bool}, optional
-            Sigmoid activation for the decoder output. (The default is True).
-        seed : {int}, optional
-            Seed used in torch.manual_seed(seed) and
-            torch.cuda.manual_seed_all(seed). (The default is 1).
-
-        Raises
-        ------
-        ValueError
-            If coord is not equal to 0, 1, 2 or 3.
-        """
 
         if coord not in [0, 1, 2, 3]:
             raise ValueError("`coord` argument must be 0, 1, 2 or 3")
-        self.coord = coord
 
         super(trVAE, self).__init__()
 
