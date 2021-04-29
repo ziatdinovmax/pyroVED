@@ -25,13 +25,16 @@ def generate_grid(data_dim: Tuple[int]) -> torch.Tensor:
     dimension, of shape [N, 1].
 
     Args:
-        data_dim :
+        data_dim:
             Dimensions of the input data.
 
     Raises:
-        NotImplementedError
+        NotImplementedError:
             If the dimension (length) of the provided data_dim is not equal to
             1 or 2.
+
+    Returns:
+        The grid (always 2d).
     """
 
     if len(data_dim) not in [1, 2]:

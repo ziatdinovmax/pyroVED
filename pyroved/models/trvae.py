@@ -27,54 +27,54 @@ class trVAE(baseVAE):
     invariances..
 
     Args:
-        data_dim
+        data_dim:
             Dimensionality of the input data; use (height x width) for images
             or (length,) for spectra.
-        latent_dim
+        latent_dim:
             Number of latent dimensions.
-        coord
+        coord:
             For 2D systems, `coord=0` is vanilla VAE, `coord=1` enforces
             rotational invariance, `coord=2` enforces invariance to
             translations, and `coord=3` enforces both rotational and
             translational invariances. For 1D systems, `coord=0` is vanilla VAE
             and `coord>0` enforces transaltional invariance. Must be 0, 1, 2 or
             3.
-        num_classes
+        num_classes:
             Number of classes (if any) for class-conditioned (t)(r)VAE (The
             default is 0).
-        hidden_dim_e
+        hidden_dim_e:
             Number of hidden units per each layer in encoder (inference
             network). (The default is 128).
-        hidden_dim_d
+        hidden_dim_d:
             Number of hidden units per each layer in decoder (generator
             network). (The default is 128).
-        num_layers_e
+        num_layers_e:
             Number of layers in encoder (inference network). (The default is
             2).
-        num_layers_d
+        num_layers_d:
             Number of layers in decoder (generator network). (The default is
             2).
-        activation
+        activation:
             Non-linear activation for inner layers of encoder and decoder.
             The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
             hyberbolic tangent ('tanh'), and softplus ('softplus')
             The default activation is 'tanh'. (The default is "tanh").
-        sampler_d
+        sampler_d:
             Decoder sampler, as defined as p(x|z) = sampler(decoder(z)).
             The available samplers are 'bernoulli', 'continuous_bernoulli',
             and 'gaussian'. (The default is "bernoulli").
-        sigmoid_d
+        sigmoid_d:
             Sigmoid activation for the decoder output. (The default is True).
-        seed
+        seed:
             Seed used in torch.manual_seed(seed) and
             torch.cuda.manual_seed_all(seed). (The default is 1).
-        **kwargs
+        **kwargs:
             Additional keyword arguments are *dx_prior* and *dy_prior* for
             setting a translational prior(s), and *decoder_sig* for setting
             sigma in the decoder's sampler when it is set to "gaussian".
 
     Raises:
-        ValueError
+        ValueError:
             If coord is not equal to 0, 1, 2 or 3.
 
     Examples:
