@@ -6,123 +6,158 @@ Variational autoencoder with rotational and/or translational invariances
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
+
 from typing import Optional, Tuple, Union
 
 import pyro
 import pyro.distributions as dist
 import torch
-import torch.tensor as tt
 
-from .base import baseVAE
-from ..nets import fcDecoderNet, fcEncoderNet, sDecoderNet
-from ..utils import (generate_grid, generate_latent_grid, get_sampler,
-                     plot_img_grid, plot_spect_grid, set_deterministic_mode,
-                     to_onehot, transform_coordinates)
+from pyroved.models.base import baseVAE
+from pyroved.nets import fcDecoderNet, fcEncoderNet, sDecoderNet
+from pyroved.utils import (
+    generate_grid, generate_latent_grid, get_sampler,
+    plot_img_grid, plot_spect_grid, set_deterministic_mode,
+    to_onehot, transform_coordinates
+)
 
 
 class trVAE(baseVAE):
-    """
-    Variational autoencoder that enforces rotational and/or translational invariances
+    """Variational autoencoder that enforces rotational and/or translational
+    invariances..
 
     Args:
         data_dim:
-            Dimensionality of the input data; use (h x w) for images
+            Dimensionality of the input data; use (height x width) for images
             or (length,) for spectra.
         latent_dim:
             Number of latent dimensions.
         coord:
-            For 2D systems, *coord=0* is vanilla VAE, *coord=1* enforces
-            rotational invariance, *coord=2* enforces invariance to translations,
-            and *coord=3* enforces both rotational and translational invariances.
-            For 1D systems, *coord=0* is vanilla VAE and *coord>0* enforces
-            transaltional invariance.
+            For 2D systems, `coord=0` is vanilla VAE, `coord=1` enforces
+            rotational invariance, `coord=2` enforces invariance to
+            translations, and `coord=3` enforces both rotational and
+            translational invariances. For 1D systems, `coord=0` is vanilla VAE
+            and `coord>0` enforces transaltional invariance. Must be 0, 1, 2 or
+            3.
         num_classes:
-            Number of classes (if any) for class-conditioned (t)(r)VAE.
+            Number of classes (if any) for class-conditioned (t)(r)VAE (The
+            default is 0).
         hidden_dim_e:
-            Number of hidden units per each layer in encoder (inference network).
-            The default value is 128.
+            Number of hidden units per each layer in encoder (inference
+            network). (The default is 128).
         hidden_dim_d:
-            Number of hidden units per each layer in decoder (generator network).
-            The default value is 128.
+            Number of hidden units per each layer in decoder (generator
+            network). (The default is 128).
         num_layers_e:
-            Number of layers in encoder (inference network).
-            The default value is 2.
+            Number of layers in encoder (inference network). (The default is
+            2).
         num_layers_d:
-            Number of layers in decoder (generator network).
-            The default value is 2.
+            Number of layers in decoder (generator network). (The default is
+            2).
         activation:
             Non-linear activation for inner layers of encoder and decoder.
             The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
             hyberbolic tangent ('tanh'), and softplus ('softplus')
-            The default activation is 'tanh'.
+            The default activation is 'tanh'. (The default is "tanh").
         sampler_d:
             Decoder sampler, as defined as p(x|z) = sampler(decoder(z)).
             The available samplers are 'bernoulli', 'continuous_bernoulli',
-            and 'gaussian' (Default: 'bernoulli').
+            and 'gaussian'. (The default is "bernoulli").
         sigmoid_d:
-            Sigmoid activation for the decoder output (Default: True)
+            Sigmoid activation for the decoder output. (The default is True).
         seed:
             Seed used in torch.manual_seed(seed) and
-            torch.cuda.manual_seed_all(seed)
-        kwargs:
-            Additional keyword arguments are *dx_prior* and *dy_prior* for setting
-            a translational prior(s), and *decoder_sig* for setting sigma
-            in the decoder's sampler when it is set to "gaussian".
+            torch.cuda.manual_seed_all(seed). (The default is 1).
+        **kwargs:
+            Additional keyword arguments are *dx_prior* and *dy_prior* for
+            setting a translational prior(s) (i.e., a guess as to the degree
+            of translational invariance in the system., and *decoder_sig* for
+            setting sigma in the decoder's sampler when it is set to
+            "gaussian".
 
-    Example:
+    Raises:
+        ValueError:
+            If coord is not equal to 0, 1, 2 or 3.
 
-    Initialize a VAE model with rotational invariance
+    Examples:
+        Initialize a VAE model with rotational invariance
 
-    >>> data_dim = (28, 28)
-    >>> rvae = trVAE(data_dim, latent_dim=2, coord=1)
+        >>> data_dim = (28, 28)
+        >>> rvae = trVAE(data_dim, latent_dim=2, coord=1)
 
-    Initialize a class-conditioned VAE model with rotational invariance
-    for dataset that has 10 classes
+        Initialize a class-conditioned VAE model with rotational invariance
+        for dataset that has 10 classes
 
-    >>> data_dim = (28, 28)
-    >>> rvae = trVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
+        >>> data_dim = (28, 28)
+        >>> rvae = trVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
     """
-    def __init__(self,
-                 data_dim: Tuple[int],
-                 latent_dim: int = 2,
-                 coord: int = 3,
-                 num_classes: int = 0,
-                 hidden_dim_e: int = 128,
-                 hidden_dim_d: int = 128,
-                 num_layers_e: int = 2,
-                 num_layers_d: int = 2,
-                 activation: str = "tanh",
-                 sampler_d: str = "bernoulli",
-                 sigmoid_d: bool = True,
-                 seed: int = 1,
-                 **kwargs: float
-                 ) -> None:
-        """
-        Initializes trVAE's modules and parameters
-        """
-        super(trVAE, self).__init__()
-        pyro.clear_param_store()
-        set_deterministic_mode(seed)
-        self.ndim = len(data_dim)
-        if self.ndim == 1 and coord > 0:
-            coord = 1
-        self.encoder_z = fcEncoderNet(
-            data_dim, latent_dim+coord, 0, hidden_dim_e,
-            num_layers_e, activation, softplus_out=True)
+
+    def __init__(
+        self,
+        data_dim: Tuple[int],
+        use_gpu: bool = False,
+        latent_dim: int = 2,
+        coord: int = 3,
+        num_classes: int = 0,
+        hidden_dim_e: int = 128,
+        hidden_dim_d: int = 128,
+        num_layers_e: int = 2,
+        num_layers_d: int = 2,
+        activation: str = "tanh",
+        sampler_d: str = "bernoulli",
+        sigmoid_d: bool = True,
+        seed: int = 1,
+        **kwargs: float
+    ) -> None:
+
         if coord not in [0, 1, 2, 3]:
-            raise ValueError("'coord' argument must be 0, 1, 2 or 3")
-        dnet = sDecoderNet if coord in [1, 2, 3] else fcDecoderNet
-        self.decoder = dnet(
-            data_dim, latent_dim, num_classes, hidden_dim_d,
-            num_layers_d, activation, sigmoid_out=sigmoid_d)
-        self.sampler_d = get_sampler(sampler_d, **kwargs)
-        self.z_dim = latent_dim + coord
+            raise ValueError("`coord` argument must be 0, 1, 2 or 3")
+
+        super(trVAE, self).__init__(use_gpu)
+
         self.coord = coord
+
+        # Reset the pyro ParamStoreDict object's dictionaries.
+        pyro.clear_param_store()
+
+        set_deterministic_mode(seed)  # Set all torch manual seeds
+
+        # Silently assign coord=1 for one-dimensional data when user-supplied
+        # coord value > 0.
+        self.ndim = len(data_dim)
+        if self.ndim == 1 and self.coord > 0:
+            self.coord = 1
+
+        # Initialize the encoder network
+        self.encoder_z = fcEncoderNet(
+            data_dim, latent_dim + self.coord, 0, hidden_dim_e, num_layers_e,
+            activation, softplus_out=True
+        )
+
+        # Initialize the decoder network
+        dnet = sDecoderNet if self.coord in [1, 2, 3] else fcDecoderNet
+        self.decoder = dnet(
+            data_dim, latent_dim, num_classes, hidden_dim_d, num_layers_d,
+            activation, sigmoid_out=sigmoid_d
+        )
+
+        # Initialize the sampler
+        self.sampler_d = get_sampler(sampler_d, **kwargs)
+
+        # Augment the latent space with an extra dimension corresponding to the
+        # translational/rotational invariance.
+        self.z_dim = latent_dim + self.coord
+
         self.num_classes = num_classes
         self.grid = generate_grid(data_dim).to(self.device)
-        dx_pri = tt(kwargs.get("dx_prior", 0.1))
+
+        # Allows the user to pass prior belief as to the degree of
+        # translational invariance in their system.
+        dx_pri = torch.tensor(kwargs.get("dx_prior", 0.1))
         dy_pri = kwargs.get("dy_prior", dx_pri.clone())
-        t_prior = tt([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
+        t_prior = torch.tensor([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
+
+        # Send objects to their appropriate devices.
         self.t_prior = t_prior.to(self.device)
         self.to(self.device)
 
@@ -137,7 +172,7 @@ class trVAE(baseVAE):
         pyro.module("decoder", self.decoder)
         # KLD scale factor (see e.g. https://openreview.net/pdf?id=Sy2fzU9gl)
         beta = kwargs.get("scale_factor", 1.)
-        reshape_ = torch.prod(tt(x.shape[1:])).item()
+        reshape_ = torch.prod(torch.tensor(x.shape[1:])).item()
         with pyro.plate("data", x.shape[0]):
             # setup hyperparameters for prior p(z)
             z_loc = x.new_zeros(torch.Size((x.shape[0], self.z_dim)))
@@ -193,7 +228,7 @@ class trVAE(baseVAE):
             dx = z[:, 0:1]
             z = z[:, 1:]
             return None, dx, z
-        phi, dx = tt(0), tt(0)
+        phi, dx = torch.tensor(0), torch.tensor(0)
         # rotation + translation
         if self.coord == 3:
             phi = z[:, 0]  # encoded angle
@@ -260,7 +295,7 @@ class trVAE(baseVAE):
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
         z = [z]
         if self.num_classes > 0:
-            cls = tt(kwargs.get("label", 0))
+            cls = torch.tensor(kwargs.get("label", 0))
             if cls.ndim < 2:
                 cls = to_onehot(cls.unsqueeze(0), self.num_classes)
             z = z + [cls.repeat(z[0].shape[0], 1)]

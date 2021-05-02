@@ -19,6 +19,13 @@ def to_onehot(idx: torch.Tensor, n: int) -> torch.Tensor:
 
 
 def set_deterministic_mode(seed: int) -> None:
+    """Sets all torch manual seeds.
+
+    Parameters
+    ----------
+    seed : {int}
+    """
+
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.empty_cache()

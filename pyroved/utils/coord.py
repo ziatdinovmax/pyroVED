@@ -4,10 +4,39 @@ import torch.tensor as tt
 import pyro.distributions as dist
 
 
+def grid2xy(X1: torch.Tensor, X2: torch.Tensor) -> torch.Tensor:
+    X = torch.cat((X1[None], X2[None]), 0)
+    d0, d1 = X.shape[0], X.shape[1] * X.shape[2]
+    X = X.reshape(d0, d1).T
+    return X
+
+
+def imcoordgrid(im_dim: Tuple[int]) -> torch.Tensor:
+    xx = torch.linspace(-1, 1, im_dim[0])
+    yy = torch.linspace(1, -1, im_dim[1])
+    x0, x1 = torch.meshgrid(xx, yy)
+    return grid2xy(x0, x1)
+
+
 def generate_grid(data_dim: Tuple[int]) -> torch.Tensor:
+    """Generates 1D or 2D grid of coordinates. Returns a torch tensor with two
+    axes. If the input data_dim indicates only one dimensional data, then the
+    output will be a 2d torch tensor artificially augmented along the last
+    dimension, of shape [N, 1].
+
+    Args:
+        data_dim:
+            Dimensions of the input data.
+
+    Raises:
+        NotImplementedError:
+            If the dimension (length) of the provided data_dim is not equal to
+            1 or 2.
+
+    Returns:
+        The grid (always 2d).
     """
-    Generates 1D or 2D grid of coordinates
-    """
+
     if len(data_dim) not in [1, 2]:
         raise NotImplementedError("Currently supports only 1D and 2D data")
     if len(data_dim) == 1:
@@ -32,20 +61,6 @@ def transform_coordinates(coord: torch.Tensor,
     rotmat = torch.stack([rotmat_r1, rotmat_r2], axis=1)
     coord = torch.bmm(coord, rotmat)
     return coord + coord_dx
-
-
-def grid2xy(X1: torch.Tensor, X2: torch.Tensor) -> torch.Tensor:
-    X = torch.cat((X1[None], X2[None]), 0)
-    d0, d1 = X.shape[0], X.shape[1] * X.shape[2]
-    X = X.reshape(d0, d1).T
-    return X
-
-
-def imcoordgrid(im_dim: Tuple[int]) -> torch.Tensor:
-    xx = torch.linspace(-1, 1, im_dim[0])
-    yy = torch.linspace(1, -1, im_dim[1])
-    x0, x1 = torch.meshgrid(xx, yy)
-    return grid2xy(x0, x1)
 
 
 def generate_latent_grid(d: int, **kwargs) -> torch.Tensor:

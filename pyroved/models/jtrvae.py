@@ -82,6 +82,7 @@ class jtrVAE(baseVAE):
                  data_dim: Tuple[int],
                  latent_dim: int,
                  discrete_dim: int,
+                 use_gpu: bool = False,
                  coord: int = 0,
                  hidden_dim_e: int = 128,
                  hidden_dim_d: int = 128,
@@ -96,7 +97,7 @@ class jtrVAE(baseVAE):
         """
         Initializes jtrVAE's modules and parameters
         """
-        super(jtrVAE, self).__init__()
+        super(jtrVAE, self).__init__(use_gpu)
         pyro.clear_param_store()
         set_deterministic_mode(seed)
         self.ndim = len(data_dim)
