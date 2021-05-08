@@ -68,12 +68,17 @@ class trVAE(baseVAE):
         seed:
             Seed used in torch.manual_seed(seed) and
             torch.cuda.manual_seed_all(seed). (The default is 1).
-        **kwargs:
-            Additional keyword arguments are *dx_prior* and *dy_prior* for
-            setting a translational prior(s) (i.e., a guess as to the degree
-            of translational invariance in the system., and *decoder_sig* for
-            setting sigma in the decoder's sampler when it is set to
-            "gaussian".
+
+    Keyword Args:
+        device:
+            Sets device to which model and data will be moved.
+            Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
+        dx_prior:
+            Translational prior in x direction (float between 0 and 1)
+        dx_prior:
+            Translational prior in y direction (float between 0 and 1)
+        decoder_sig:
+            Sets sigma for a "gaussian" decoder sampler
 
     Raises:
         ValueError:
@@ -95,7 +100,6 @@ class trVAE(baseVAE):
     def __init__(
         self,
         data_dim: Tuple[int],
-        use_gpu: bool = False,
         latent_dim: int = 2,
         coord: int = 3,
         num_classes: int = 0,
@@ -107,13 +111,13 @@ class trVAE(baseVAE):
         sampler_d: str = "bernoulli",
         sigmoid_d: bool = True,
         seed: int = 1,
-        **kwargs: float
-    ) -> None:
+        **kwargs: Union[str, float]
+         ) -> None:
 
         if coord not in [0, 1, 2, 3]:
             raise ValueError("`coord` argument must be 0, 1, 2 or 3")
 
-        super(trVAE, self).__init__(use_gpu)
+        super(trVAE, self).__init__(**kwargs)
 
         self.coord = coord
 
@@ -141,23 +145,23 @@ class trVAE(baseVAE):
             activation, sigmoid_out=sigmoid_d
         )
 
-        # Initialize the sampler
+        # Initialize the decoder's sampler
         self.sampler_d = get_sampler(sampler_d, **kwargs)
 
-        # Augment the latent space with an extra dimension corresponding to the
-        # translational/rotational invariance.
+        # Sets continuous and discrete dimensions
         self.z_dim = latent_dim + self.coord
-
         self.num_classes = num_classes
-        self.grid = generate_grid(data_dim).to(self.device)
 
-        # Allows the user to pass prior belief as to the degree of
-        # translational invariance in their system.
+        # Generates coordinates grid
+        self.grid = generate_grid(data_dim)
+
+        # Prior "belief" about the degree of translational disorder in the system
         dx_pri = torch.tensor(kwargs.get("dx_prior", 0.1))
         dy_pri = kwargs.get("dy_prior", dx_pri.clone())
         t_prior = torch.tensor([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
 
         # Send objects to their appropriate devices.
+        self.grid = self.grid.to(self.device)
         self.t_prior = t_prior.to(self.device)
         self.to(self.device)
 

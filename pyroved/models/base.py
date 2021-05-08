@@ -7,7 +7,7 @@ Variational encoder-decoder base class
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
 
-from typing import Tuple, Union, List
+from typing import Tuple, Type, Union, List
 from abc import abstractmethod
 
 import torch
@@ -18,20 +18,19 @@ from ..utils import init_dataloader, transform_coordinates
 
 
 class baseVAE(nn.Module):
-    """Base class for variational autoencoder models.
+    """Base class for variational encoder-decoder models.
 
-    Args:
-        use_gpu:
-            If True, sets devise to 'cuda' if a GPU is available. Else,
-            silently falls back to using the CPU.
+    Keyword Args:
+        device:
+            Sets device to which model and data will be moved.
+            Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
     """
 
-    def __init__(self, use_gpu: bool = False):
+    def __init__(self, **kwargs: str):
         super(baseVAE, self).__init__()
-        if use_gpu:
-            self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        else:
-            self.device = 'cpu'
+
+        self.device = kwargs.get(
+            "device", 'cuda' if torch.cuda.is_available() else 'cpu')
         self.encoder_z = None
         self.decoder = None
         self.coord = 0
@@ -51,8 +50,8 @@ class baseVAE(nn.Module):
 
     def _encode(
         self,
-        *args: Tuple[Union[torch.Tensor, List[torch.Tensor]]],
-        **kwargs: dict
+        *input_args: Tuple[Union[torch.Tensor, List[torch.Tensor]]],
+        **kwargs: int
     ) -> torch.Tensor:
         """Encodes data using a trained inference (encoder) network
         in a batch-by-batch fashion."""
@@ -64,7 +63,7 @@ class baseVAE(nn.Module):
             encoded = torch.cat(encoded, -1).cpu()
             return encoded
 
-        loader = init_dataloader(*args, shuffle=False, **kwargs)
+        loader = init_dataloader(*input_args, shuffle=False, **kwargs)
         z_encoded = []
         for x in loader:
             z_encoded.append(inference(x))
@@ -93,12 +92,12 @@ class baseVAE(nn.Module):
             x_decoded.append(generator(z))
         return torch.cat(x_decoded)
 
-    def set_encoder(self, encoder_net: torch.nn.Module) -> None:
+    def set_encoder(self, encoder_net: Type[torch.nn.Module]) -> None:
         """Sets a user-defined encoder neural network."""
 
         self.encoder_z = encoder_net.to(self.device)
 
-    def set_decoder(self, decoder_net: torch.nn.Module) -> None:
+    def set_decoder(self, decoder_net: Type[torch.nn.Module]) -> None:
         """Sets a user-defined decoder neural network."""
 
         self.decoder = decoder_net.to(self.device)

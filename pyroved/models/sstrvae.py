@@ -61,10 +61,17 @@ class sstrVAE(baseVAE):
         seed:
             Seed used in torch.manual_seed(seed) and
             torch.cuda.manual_seed_all(seed)
-        kwargs:
-            Additional keyword arguments are *dx_prior* and *dy_prior* for setting
-            a translational prior(s), and *decoder_sig* for setting sigma
-            in the decoder's sampler when it is set to "gaussian".
+
+    Keyword Args:
+        device:
+            Sets device to which model and data will be moved.
+            Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
+        dx_prior:
+            Translational prior in x direction (float between 0 and 1)
+        dx_prior:
+            Translational prior in y direction (float between 0 and 1)
+        decoder_sig:
+            Sets sigma for a "gaussian" decoder sampler
 
     Example:
 
@@ -78,7 +85,6 @@ class sstrVAE(baseVAE):
                  data_dim: Tuple[int],
                  latent_dim: int,
                  num_classes: int,
-                 use_gpu: bool = False,
                  coord: int = 3,
                  hidden_dim_e: int = 128,
                  hidden_dim_d: int = 128,
@@ -89,12 +95,12 @@ class sstrVAE(baseVAE):
                  sampler_d: str = "bernoulli",
                  sigmoid_d: bool = True,
                  seed: int = 1,
-                 **kwargs: float
+                 **kwargs: Union[str, float]
                  ) -> None:
         """
         Initializes sstrVAE parameters
         """
-        super(sstrVAE, self).__init__(use_gpu)
+        super(sstrVAE, self).__init__(**kwargs)
         pyro.clear_param_store()
         set_deterministic_mode(seed)
         if coord not in [0, 1, 2, 3]:

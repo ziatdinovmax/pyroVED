@@ -1,4 +1,4 @@
-from typing import Type, Optional
+from typing import Type, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -22,8 +22,12 @@ class auxSVItrainer:
             Pyro optimizer (Defaults to Adam with learning rate 5e-4)
         seed:
             Enforces reproducibility
-        kwargs:
-            learning rate as 'lr' (Default: 5e-4)
+
+    Keyword Args:
+        lr: learning rate (Default: 5e-4)
+        device:
+            Sets device to which model and data will be moved.
+            Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
 
     Example:
 
@@ -42,14 +46,15 @@ class auxSVItrainer:
                  model: Type[nn.Module],
                  optimizer: Type[optim.PyroOptim] = None,
                  seed: int = 1,
-                 **kwargs: float
+                 **kwargs: Union[str, float]
                  ) -> None:
         """
         Initializes trainer parameters
         """
         pyro.clear_param_store()
         set_deterministic_mode(seed)
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = kwargs.get(
+            "device", 'cuda' if torch.cuda.is_available() else 'cpu')
         if optimizer is None:
             lr = kwargs.get("lr", 5e-4)
             optimizer = optim.Adam({"lr": lr})
