@@ -8,6 +8,8 @@
 pyroVED is an open-source package built on top of the Pyro probabilistic programming language for applications of variational encoder-decoder models in spectral and image analyses. The currently available models include variational autoencoders with translational and/or rotational invariance for unsupervised, class-conditioned, and semi-supervised learning, as well as *im2spec*-type models for predicting spectra from images and vice versa.
 More models to come!
 
+If you found a bug in the code or would like a specific feature to be added, please create a report/request [here](https://github.com/ziatdinovmax/pyroVED/issues/new/choose).
+
 ## Examples
 The easiest way to start using pyroVED is via [Google Colab](https://colab.research.google.com/notebooks/intro.ipynb), which is a free research tool from Google for machine learning education and research built on top of Jupyter Notebook. The following notebooks can be executed in Google Colab by simply clicking on the "Open in Colab" icon:
 
