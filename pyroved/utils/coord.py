@@ -46,21 +46,46 @@ def generate_grid(data_dim: Tuple[int]) -> torch.Tensor:
 
 def transform_coordinates(coord: torch.Tensor,
                           phi: Union[torch.Tensor, float] = 0,
+                          scale: Union[torch.Tensor, float] = 1.,
                           coord_dx: Union[torch.Tensor, float] = 0,
                           ) -> torch.Tensor:
     """
-    Rotation of coordinates followed by translation.
+    Rotation of 2D coordinates followed by scaling and translation.
     For 1D grid, there is only transaltion. Operates on batches.
     """
     if coord.shape[-1] == 1:
         return coord + coord_dx
+    coord = rotate_coordinates(coord, phi)
+    coord = scale_coordinates(coord, scale)
+    return coord + coord_dx
+
+
+def rotate_coordinates(coord: torch.Tensor,
+                       phi: Union[torch.Tensor, float] = 0
+                       ) -> torch.Tensor:
+    """
+    Rotation of 2D coordinates. Operates on batches
+    """
     if torch.sum(phi) == 0:
         phi = coord.new_zeros(coord.shape[0])
     rotmat_r1 = torch.stack([torch.cos(phi), torch.sin(phi)], 1)
     rotmat_r2 = torch.stack([-torch.sin(phi), torch.cos(phi)], 1)
     rotmat = torch.stack([rotmat_r1, rotmat_r2], axis=1)
     coord = torch.bmm(coord, rotmat)
-    return coord + coord_dx
+    return coord
+
+
+def scale_coordinates(coord: torch.Tensor,
+                      scale: torch.Tensor
+                      ) -> torch.Tensor:
+    """
+    Scaling of 2D coordinates. Operates on batches
+    """
+    scalemat = torch.zeros(coord.shape[0], 2, 2)
+    scalemat[:, 0, 0] = scale
+    scalemat[:, 1, 1] = scale
+    coord = torch.bmm(coord, scalemat)
+    return coord
 
 
 def generate_latent_grid(d: int, **kwargs) -> torch.Tensor:
