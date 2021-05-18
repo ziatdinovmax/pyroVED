@@ -82,7 +82,7 @@ class baseVAE(nn.Module):
             grid = self.grid
             a = kwargs.get("angle", tt(0.)).to(self.device)
             t = kwargs.get("shift", tt(0.)).to(self.device)
-            s = kwargs.get("scale", tt(0.)).to(self.device)
+            s = kwargs.get("scale", tt(1.)).to(self.device)
             grid = transform_coordinates(
                 grid.unsqueeze(0), a.unsqueeze(0),
                 t.unsqueeze(0), s.unsqueeze(0))
