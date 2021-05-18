@@ -46,8 +46,8 @@ def generate_grid(data_dim: Tuple[int]) -> torch.Tensor:
 
 def transform_coordinates(coord: torch.Tensor,
                           phi: Union[torch.Tensor, float] = 0,
-                          scale: Union[torch.Tensor, float] = 1.,
                           coord_dx: Union[torch.Tensor, float] = 0,
+                          scale: Union[torch.Tensor, float] = 1.,
                           ) -> torch.Tensor:
     """
     Rotation of 2D coordinates followed by scaling and translation.

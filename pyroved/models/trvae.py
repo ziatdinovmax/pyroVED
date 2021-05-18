@@ -122,8 +122,8 @@ class trVAE(baseVAE):
             coord = 0
         else:
             coord = len(invariances)
-        if 't' in invariances and self.ndim == 2:
-            coord = coord + 1
+            if 't' in invariances and self.ndim == 2:
+                coord = coord + 1
         self.coord = coord
         self.invariances = invariances
 
@@ -192,7 +192,7 @@ class trVAE(baseVAE):
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
                 grid = self.grid.expand(x.shape[0], *self.grid.shape)
-                x_coord_prime = transform_coordinates(grid, phi, sc, dx)
+                x_coord_prime = transform_coordinates(grid, phi, dx, sc)
             # Add class label (if any)
             if y is not None:
                 z = torch.cat([z, y], dim=-1)
