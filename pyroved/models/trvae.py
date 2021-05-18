@@ -74,8 +74,10 @@ class trVAE(baseVAE):
             Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
         dx_prior:
             Translational prior in x direction (float between 0 and 1)
-        dx_prior:
+        dy_prior:
             Translational prior in y direction (float between 0 and 1)
+        sc_prior:
+            Scale prior (usually, sc_prior << 1)
         decoder_sig:
             Sets sigma for a "gaussian" decoder sampler
 
@@ -159,6 +161,8 @@ class trVAE(baseVAE):
         dx_pri = torch.tensor(kwargs.get("dx_prior", 0.1))
         dy_pri = kwargs.get("dy_prior", dx_pri.clone())
         t_prior = torch.tensor([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
+        # Prior "belief" about the degree of scale disorder in the system
+        self.sc_prior = kwargs.get("sc_prior", 0.1)
 
         # Send objects to their appropriate devices.
         self.grid = self.grid.to(self.device)
@@ -241,7 +245,7 @@ class trVAE(baseVAE):
             dx = z[:, :2]
             z = z[:, 2:]
         if 's' in self.invariances:
-            sc = sc + 0.1 * z[:, 0]
+            sc = sc + self.sc_prior * z[:, 0]
             z = z[:, 1:]
         return phi, dx, sc, z
 
