@@ -81,7 +81,7 @@ def scale_coordinates(coord: torch.Tensor,
     """
     Scaling of 2D coordinates. Operates on batches
     """
-    scalemat = torch.zeros(coord.shape[0], 2, 2)
+    scalemat = coord.new_zeros(coord.shape[0], 2, 2)
     scalemat[:, 0, 0] = scale
     scalemat[:, 1, 1] = scale
     coord = torch.bmm(coord, scalemat)
