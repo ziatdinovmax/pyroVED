@@ -33,7 +33,7 @@ class baseVAE(nn.Module):
             "device", 'cuda' if torch.cuda.is_available() else 'cpu')
         self.encoder_z = None
         self.decoder = None
-        self.coord = 0
+        self.invariances = None
         self.grid = None
 
     @abstractmethod
@@ -78,16 +78,21 @@ class baseVAE(nn.Module):
             return loc.cpu()
 
         z_new = init_dataloader(z_new, shuffle=False, **kwargs)
-        if self.coord > 0:
+        if self.invariances:
             grid = self.grid
-            a = kwargs.get("angle", tt(0.)).to(self.device)
-            t = kwargs.get("shift", tt(0.)).to(self.device)
+            if 'r' in self.invariances:
+                a = kwargs.get("angle", tt(0.)).to(self.device)
+            if 't' in self.invariances:
+                t = kwargs.get("shift", tt(0.)).to(self.device)
+            if 's' in self.invariances:
+                s = kwargs.get("scale", tt(0.)).to(self.device)
             grid = transform_coordinates(
-                grid.unsqueeze(0), a.unsqueeze(0), t.unsqueeze(0))
+                grid.unsqueeze(0), a.unsqueeze(0),
+                t.unsqueeze(0), s.unsqueeze(0))
             grid = grid.squeeze()
         x_decoded = []
         for z in z_new:
-            if self.coord > 0:
+            if self.invariances:
                 z = [grid.expand(z[0].shape[0], *grid.shape)] + z
             x_decoded.append(generator(z))
         return torch.cat(x_decoded)
