@@ -179,7 +179,7 @@ class sstrVAE(baseVAE):
             # split latent variable into parts for rotation and/or translation
             # and image content
             if self.coord > 0:
-                phi, dx, zs = self.split_latent(zs)
+                phi, dx, sc, zs = self.split_latent(zs)
                 if torch.sum(dx.abs()) != 0:
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
@@ -188,7 +188,7 @@ class sstrVAE(baseVAE):
                 else:
                     expdim = dx.shape[0]
                 grid = self.grid.expand(expdim, *self.grid.shape)
-                x_coord_prime = transform_coordinates(grid, phi, dx)
+                x_coord_prime = transform_coordinates(grid, phi, dx, sc)
             # sample label from the constant prior or observe the value
             alpha_prior = (torch.ones(batch_dim, self.num_classes, **specs) /
                            self.num_classes)
