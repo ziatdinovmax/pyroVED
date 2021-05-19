@@ -8,7 +8,7 @@ and/or translations
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
-from typing import Tuple, Union
+from typing import Tuple, Union, List
 
 import pyro
 import pyro.distributions as dist
@@ -37,11 +37,11 @@ class jtrVAE(baseVAE):
             Number of continuous latent dimensions.
         discrete_dim:
             Number of discrete latent dimensions.
-        coord:
-            For 2D systems, *coord=0* is vanilla VAE, *coord=1* enforces
-            rotational invariance, *coord=2* enforces invariance to translations,
-            and *coord=3* enforces both rotational and translational invariances.
-            For 1D systems, *coord=0* is vanilla VAE and *coord>0* enforces
+        invariances:
+            List with invariances to enforce. For 2D systems, None is vanilla VAE,
+            `r` enforces rotational invariance, `t` enforces invariance to
+            translations, and `sc` enforces a scale invariance.
+            For 1D systems, None is vanilla VAE, and 't' enforces
             translational invariance.
         hidden_dim_e:
             Number of hidden units per each layer in encoder (inference network).
@@ -72,8 +72,10 @@ class jtrVAE(baseVAE):
             Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
         dx_prior:
             Translational prior in x direction (float between 0 and 1)
-        dx_prior:
+        dy_prior:
             Translational prior in y direction (float between 0 and 1)
+        c_prior:
+            Scale prior (usually, sc_prior << 1)
         decoder_sig:
             Sets sigma for a "gaussian" decoder sampler
 
@@ -82,14 +84,14 @@ class jtrVAE(baseVAE):
     Initialize a joint VAE model with rotational invariance for 10 discrete classes
 
     >>> data_dim = (28, 28)
-    >>> jrvae = jtrVAE(data_dim, latent_dim=2, discrete_dim=10, coord=1)
+    >>> jrvae = jtrVAE(data_dim, latent_dim=2, discrete_dim=10, invariances=['r'])
     """
 
     def __init__(self,
                  data_dim: Tuple[int],
                  latent_dim: int,
                  discrete_dim: int,
-                 coord: int = 0,
+                 invariances: List[str] = None,
                  hidden_dim_e: int = 128,
                  hidden_dim_d: int = 128,
                  num_layers_e: int = 2,
@@ -98,7 +100,7 @@ class jtrVAE(baseVAE):
                  sampler_d: str = "bernoulli",
                  sigmoid_d: bool = True,
                  seed: int = 1,
-                 **kwargs: Union[str, float] 
+                 **kwargs: Union[str, float]
                  ) -> None:
         """
         Initializes jtrVAE's modules and parameters
@@ -108,25 +110,49 @@ class jtrVAE(baseVAE):
         set_deterministic_mode(seed)
         self.ndim = len(data_dim)
         self.data_dim = data_dim
+
+        if invariances is None:
+            coord = 0
+        else:
+            coord = len(invariances)
+            if 't' in invariances and self.ndim == 2:
+                coord = coord + 1
+        self.coord = coord
+        self.invariances = invariances
+
         if self.ndim == 1 and coord > 0:
             coord = 1
+
+        # Initialize the Encoder NN
         self.encoder_z = jfcEncoderNet(
-            data_dim, latent_dim+coord, discrete_dim, hidden_dim_e,
+            data_dim, latent_dim+self.coord, discrete_dim, hidden_dim_e,
             num_layers_e, activation, softplus_out=True)
-        if coord not in [0, 1, 2, 3]:
-            raise ValueError("'coord' argument must be 0, 1, 2 or 3")
-        dnet = sDecoderNet if coord in [1, 2, 3] else fcDecoderNet
+
+        # Initialize the Decoder NN
+        dnet = sDecoderNet if 0 < self.coord < 5 else fcDecoderNet
         self.decoder = dnet(
             data_dim, latent_dim, discrete_dim, hidden_dim_d,
             num_layers_d, activation, sigmoid_out=sigmoid_d, unflat=False)
+        
+        # Initialize the decoder's sampler
         self.sampler_d = get_sampler(sampler_d, **kwargs)
+
+        # Set continuous and discrete dimensions
         self.z_dim = latent_dim + coord
-        self.coord = coord
         self.discrete_dim = discrete_dim
-        self.grid = generate_grid(data_dim).to(self.device)
+
+        # Generate coordinate grid
+        self.grid = generate_grid(data_dim)
+
+        # Prior "belief" about the degree of translational disorder in the system
         dx_pri = tt(kwargs.get("dx_prior", 0.1))
         dy_pri = kwargs.get("dy_prior", dx_pri.clone())
         t_prior = tt([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
+        # Prior "belief" about the degree of scale disorder in the system
+        self.sc_prior = kwargs.get("sc_prior", 0.1)
+
+        # Send objects to their appropriate devices.
+        self.grid = self.grid.to(self.device)
         self.t_prior = t_prior.to(self.device)
         self.to(self.device)
 
@@ -160,12 +186,12 @@ class jtrVAE(baseVAE):
             # split latent variable into parts for rotation and/or translation
             # and image content
             if self.coord > 0:
-                phi, dx, z = self.split_latent(z.repeat(self.discrete_dim, 1))
+                phi, dx, sc, z = self.split_latent(z.repeat(self.discrete_dim, 1))
                 if torch.sum(dx.abs()) != 0:
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
                 grid = self.grid.expand(bdim*self.discrete_dim, *self.grid.shape)
-                x_coord_prime = transform_coordinates(grid, phi, dx)
+                x_coord_prime = transform_coordinates(grid, phi, dx, sc)
             # Continuous and discrete latent variables for the decoder
             z = [z, z_disc.reshape(-1, self.discrete_dim) if self.coord > 0 else z_disc]
             # decode the latent code z together with the transformed coordinates (if any)
@@ -210,20 +236,17 @@ class jtrVAE(baseVAE):
             zs = zs[:, 1:]
             return None, dx, zs
         phi, dx = tt(0), tt(0)
-        # rotation + translation
-        if self.coord == 3:
-            phi = zs[:, 0]  # encoded angle
-            dx = zs[:, 1:3]  # translation
-            zs = zs[:, 3:]  # image content
-        # translation only
-        elif self.coord == 2:
-            dx = zs[:, :2]
-            zs = zs[:, 2:]
-        # rotation only
-        elif self.coord == 1:
+        sc = torch.tensor(1).to(self.device)
+        if 'r' in self.invariances:
             phi = zs[:, 0]
             zs = zs[:, 1:]
-        return phi, dx, zs
+        if 't' in self.invariances:
+            dx = zs[:, :2]
+            zs = zs[:, 2:]
+        if 's' in self.invariances:
+            sc = sc + self.sc_prior * zs[:, 0]
+            zs = zs[:, 1:]
+        return phi, dx, sc, zs
 
     def encode(self,
                x_new: torch.Tensor,
