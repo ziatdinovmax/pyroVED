@@ -36,11 +36,12 @@ class sstrVAE(baseVAE):
         num_classes:
             Number of classes in the classification scheme
         invariances:
-            List with invariances. For 2D systems, None is vanilla VAE,
-            `r` enforces rotational invariance, `t` enforces invariance to
-            translations, and `sc` enforces a scale invariance.
-            For 1D systems, None is vanilla VAE, and 't' enforces
-            translational invariance.
+            List with invariances to enforce. For 2D systems, `r` enforces
+            rotational invariance, `t` enforces invariance to
+            translations, `sc` enforces a scale invariance, and
+            invariances=None corresponds to vanilla VAE.
+            For 1D systems, 't' enforces translational invariance and
+            invariances=None is vanilla VAE
         hidden_dim_e:
             Number of hidden units per each layer in encoder (inference network).
         hidden_dim_d:
@@ -115,7 +116,7 @@ class sstrVAE(baseVAE):
             coord = len(invariances)
             if 't' in invariances and self.ndim == 2:
                 coord = coord + 1
-        self.coord = coord  # latent dims associated with coordiantes
+        self.coord = coord  # latent dims associated with coordinates
         self.invariances = invariances
 
         if self.ndim == 1 and coord > 0:

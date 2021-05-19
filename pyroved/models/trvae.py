@@ -33,11 +33,12 @@ class trVAE(baseVAE):
         latent_dim:
             Number of latent dimensions.
         invariances:
-            List with invariances. For 2D systems, None is vanilla VAE,
-            `r` enforces rotational invariance, `t` enforces invariance to
-            translations, and `sc` enforces a scale invariance.
-            For 1D systems, None is vanilla VAE, and 't' enforces
-            translational invariance.
+            List with invariances to enforce. For 2D systems, `r` enforces
+            rotational invariance, `t` enforces invariance to
+            translations, `sc` enforces a scale invariance, and
+            invariances=None corresponds to vanilla VAE.
+            For 1D systems, 't' enforces translational invariance and
+            invariances=None is vanilla VAE
         num_classes:
             Number of classes (if any) for class-conditioned (t)(r)VAE (The
             default is 0).

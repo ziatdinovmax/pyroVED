@@ -38,11 +38,12 @@ class jtrVAE(baseVAE):
         discrete_dim:
             Number of discrete latent dimensions.
         invariances:
-            List with invariances to enforce. For 2D systems, None is vanilla VAE,
-            `r` enforces rotational invariance, `t` enforces invariance to
-            translations, and `sc` enforces a scale invariance.
-            For 1D systems, None is vanilla VAE, and 't' enforces
-            translational invariance.
+            List with invariances to enforce. For 2D systems, `r` enforces
+            rotational invariance, `t` enforces invariance to
+            translations, `sc` enforces a scale invariance, and
+            invariances=None corresponds to vanilla VAE.
+            For 1D systems, 't' enforces translational invariance and
+            invariances=None is vanilla VAE
         hidden_dim_e:
             Number of hidden units per each layer in encoder (inference network).
         hidden_dim_d:
@@ -74,7 +75,7 @@ class jtrVAE(baseVAE):
             Translational prior in x direction (float between 0 and 1)
         dy_prior:
             Translational prior in y direction (float between 0 and 1)
-        c_prior:
+        sc_prior:
             Scale prior (usually, sc_prior << 1)
         decoder_sig:
             Sets sigma for a "gaussian" decoder sampler
@@ -133,7 +134,7 @@ class jtrVAE(baseVAE):
         self.decoder = dnet(
             data_dim, latent_dim, discrete_dim, hidden_dim_d,
             num_layers_d, activation, sigmoid_out=sigmoid_d, unflat=False)
-        
+
         # Initialize the decoder's sampler
         self.sampler_d = get_sampler(sampler_d, **kwargs)
 
