@@ -236,13 +236,13 @@ class sstrVAE(baseVAE):
         sc = torch.tensor(1).to(self.device)
         if 'r' in self.invariances:
             phi = zs[:, 0]
-            z = zs[:, 1:]
+            zs = zs[:, 1:]
         if 't' in self.invariances:
             dx = zs[:, :2]
-            z = zs[:, 2:]
+            zs = zs[:, 2:]
         if 's' in self.invariances:
             sc = sc + self.sc_prior * z[:, 0]
-            z = zs[:, 1:]
+            zs = zs[:, 1:]
         zs = zs.view(*zdims)
         return phi, dx, sc, zs
 
