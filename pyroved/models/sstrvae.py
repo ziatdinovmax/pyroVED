@@ -241,7 +241,7 @@ class sstrVAE(baseVAE):
             dx = zs[:, :2]
             zs = zs[:, 2:]
         if 's' in self.invariances:
-            sc = sc + self.sc_prior * z[:, 0]
+            sc = sc + self.sc_prior * zs[:, 0]
             zs = zs[:, 1:]
         zs = zs.view(*zdims)
         return phi, dx, sc, zs
