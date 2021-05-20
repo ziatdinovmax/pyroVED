@@ -106,23 +106,11 @@ class jtrVAE(baseVAE):
         """
         Initializes jtrVAE's modules and parameters
         """
-        super(jtrVAE, self).__init__(**kwargs)
+        args = (data_dim, invariances)
+        super(jtrVAE, self).__init__(*args, **kwargs)
         pyro.clear_param_store()
         set_deterministic_mode(seed)
-        self.ndim = len(data_dim)
         self.data_dim = data_dim
-
-        if invariances is None:
-            coord = 0
-        else:
-            coord = len(invariances)
-            if 't' in invariances and self.ndim == 2:
-                coord = coord + 1
-        self.coord = coord
-        self.invariances = invariances
-
-        if self.ndim == 1 and coord > 0:
-            coord = 1
 
         # Initialize the Encoder NN
         self.encoder_z = jfcEncoderNet(
@@ -139,22 +127,10 @@ class jtrVAE(baseVAE):
         self.sampler_d = get_sampler(sampler_d, **kwargs)
 
         # Set continuous and discrete dimensions
-        self.z_dim = latent_dim + coord
+        self.z_dim = latent_dim + self.coord
         self.discrete_dim = discrete_dim
 
-        # Generate coordinate grid
-        self.grid = generate_grid(data_dim)
-
-        # Prior "belief" about the degree of translational disorder in the system
-        dx_pri = tt(kwargs.get("dx_prior", 0.1))
-        dy_pri = kwargs.get("dy_prior", dx_pri.clone())
-        t_prior = tt([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
-        # Prior "belief" about the degree of scale disorder in the system
-        self.sc_prior = kwargs.get("sc_prior", 0.1)
-
-        # Send objects to their appropriate devices.
-        self.grid = self.grid.to(self.device)
-        self.t_prior = t_prior.to(self.device)
+        # Move model parameters to appropriate device
         self.to(self.device)
 
     def model(self,
@@ -188,7 +164,7 @@ class jtrVAE(baseVAE):
             # and image content
             if self.coord > 0:
                 phi, dx, sc, z = self.split_latent(z.repeat(self.discrete_dim, 1))
-                if torch.sum(dx.abs()) != 0:
+                if 't' in self.invariances:
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
                 grid = self.grid.expand(bdim*self.discrete_dim, *self.grid.shape)
@@ -227,27 +203,12 @@ class jtrVAE(baseVAE):
             with pyro.poutine.scale(scale=beta[1]):
                 pyro.sample("latent_disc", dist.OneHotCategorical(alpha))
 
-    def split_latent(self, zs: torch.Tensor) -> Tuple[torch.Tensor]:
+    def split_latent(self, z: torch.Tensor) -> Tuple[torch.Tensor]:
         """
         Split latent variable into parts with rotation and/or translation
         and image content
         """
-        if self.ndim == 1:
-            dx = zs[:, 0:1]
-            zs = zs[:, 1:]
-            return None, dx, zs
-        phi, dx = tt(0), tt(0)
-        sc = torch.tensor(1).to(self.device)
-        if 'r' in self.invariances:
-            phi = zs[:, 0]
-            zs = zs[:, 1:]
-        if 't' in self.invariances:
-            dx = zs[:, :2]
-            zs = zs[:, 2:]
-        if 's' in self.invariances:
-            sc = sc + self.sc_prior * zs[:, 0]
-            zs = zs[:, 1:]
-        return phi, dx, sc, zs
+        return self._split_latent(z)
 
     def encode(self,
                x_new: torch.Tensor,

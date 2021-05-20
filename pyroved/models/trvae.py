@@ -24,7 +24,7 @@ from pyroved.utils import (
 
 class trVAE(baseVAE):
     """Variational autoencoder that enforces rotational and/or translational
-    invariances..
+        and/or scale invariances
 
     Args:
         data_dim:
@@ -112,42 +112,25 @@ class trVAE(baseVAE):
         seed: int = 1,
         **kwargs: Union[str, float]
          ) -> None:
+        args = (data_dim, invariances)
+        super(trVAE, self).__init__(*args, **kwargs)
 
-        super(trVAE, self).__init__(**kwargs)
-        # Reset the pyro ParamStoreDict object's dictionaries.
+        # Reset the pyro ParamStoreDict object's dictionaries
         pyro.clear_param_store()
         # Set all torch manual seeds
         set_deterministic_mode(seed)
-
-        self.ndim = len(data_dim)
-
-        if invariances is None:
-            coord = 0
-        else:
-            coord = len(invariances)
-            if 't' in invariances and self.ndim == 2:
-                coord = coord + 1
-        self.coord = coord
-        self.invariances = invariances
-
-        # Silently assign coord=1 for one-dimensional data when user-supplied
-        # coord value > 0.
-        if self.ndim == 1 and self.coord > 0:
-            self.coord = 1
 
         # Initialize the encoder network
         self.encoder_z = fcEncoderNet(
             data_dim, latent_dim + self.coord, 0, hidden_dim_e, num_layers_e,
             activation, softplus_out=True
         )
-
         # Initialize the decoder network
         dnet = sDecoderNet if 0 < self.coord < 5 else fcDecoderNet
         self.decoder = dnet(
             data_dim, latent_dim, num_classes, hidden_dim_d, num_layers_d,
             activation, sigmoid_out=sigmoid_d
         )
-
         # Initialize the decoder's sampler
         self.sampler_d = get_sampler(sampler_d, **kwargs)
 
@@ -155,19 +138,7 @@ class trVAE(baseVAE):
         self.z_dim = latent_dim + self.coord
         self.num_classes = num_classes
 
-        # Generates coordinates grid
-        self.grid = generate_grid(data_dim)
-
-        # Prior "belief" about the degree of translational disorder in the system
-        dx_pri = torch.tensor(kwargs.get("dx_prior", 0.1))
-        dy_pri = kwargs.get("dy_prior", dx_pri.clone())
-        t_prior = torch.tensor([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
-        # Prior "belief" about the degree of scale disorder in the system
-        self.sc_prior = kwargs.get("sc_prior", 0.1)
-
-        # Send objects to their appropriate devices.
-        self.grid = self.grid.to(self.device)
-        self.t_prior = t_prior.to(self.device)
+        # Move model parameters to appropriate device
         self.to(self.device)
 
     def model(self,
@@ -193,7 +164,7 @@ class trVAE(baseVAE):
                 # Split latent variable into parts for rotation
                 # and/or translation and image content
                 phi, dx, sc, z = self.split_latent(z)
-                if torch.sum(dx.abs()) != 0:
+                if 't' in self.invariances:
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
                 grid = self.grid.expand(x.shape[0], *self.grid.shape)
@@ -232,23 +203,7 @@ class trVAE(baseVAE):
         Split latent variable into parts for rotation
         and/or translation and image content
         """
-        # For 1D, there is only a translation
-        if self.ndim == 1:
-            dx = z[:, 0:1]
-            z = z[:, 1:]
-            return None, dx, z
-        phi, dx = torch.tensor(0), torch.tensor(0)
-        sc = torch.tensor(1).to(self.device)
-        if 'r' in self.invariances:
-            phi = z[:, 0]
-            z = z[:, 1:]
-        if 't' in self.invariances:
-            dx = z[:, :2]
-            z = z[:, 2:]
-        if 's' in self.invariances:
-            sc = sc + self.sc_prior * z[:, 0]
-            z = z[:, 1:]
-        return phi, dx, sc, z
+        return self._split_latent(z)
 
     def encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """

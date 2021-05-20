@@ -104,23 +104,11 @@ class sstrVAE(baseVAE):
         """
         Initializes sstrVAE parameters
         """
-        super(sstrVAE, self).__init__(**kwargs)
+        args = (data_dim, invariances)
+        super(sstrVAE, self).__init__(*args, **kwargs)
         pyro.clear_param_store()
         set_deterministic_mode(seed)
 
-        self.ndim = len(data_dim)
-
-        if invariances is None:
-            coord = 0
-        else:
-            coord = len(invariances)
-            if 't' in invariances and self.ndim == 2:
-                coord = coord + 1
-        self.coord = coord  # latent dims associated with coordinates
-        self.invariances = invariances
-
-        if self.ndim == 1 and coord > 0:
-            coord = 1
         self.data_dim = data_dim
 
         # Initialize z-Encoder neural network
@@ -143,19 +131,7 @@ class sstrVAE(baseVAE):
         self.z_dim = latent_dim + self.coord
         self.num_classes = num_classes
 
-        # Generates coordinates grid
-        self.grid = generate_grid(data_dim)
-
-        # Prior "belief" about the degree of translational disorder in the system
-        dx_pri = tt(kwargs.get("dx_prior", 0.1))
-        dy_pri = kwargs.get("dy_prior", dx_pri.clone())
-        t_prior = tt([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
-        # Prior "belief" about the degree of scale disorder in the system
-        self.sc_prior = kwargs.get("sc_prior", 0.1)
-
-        # Send objects to their appropriate devices.
-        self.grid = self.grid.to(self.device)
-        self.t_prior = t_prior.to(self.device)
+        # Send model parameters to their appropriate devices.
         self.to(self.device)
 
     def model(self,
@@ -181,13 +157,15 @@ class sstrVAE(baseVAE):
             # and image content
             if self.coord > 0:
                 phi, dx, sc, zs = self.split_latent(zs)
-                if torch.sum(dx.abs()) != 0:
+                if 't' in self.invariances:
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
-                if self.ndim > 1:
-                    expdim = dx.shape[0] if self.coord > 1 else phi.shape[0]
-                else:
+                if 'r' in self.invariances:
+                    expdim = phi.shape[0]
+                elif 't' in self.invariances:
                     expdim = dx.shape[0]
+                elif 's' in self.invariances:
+                    expdim = sc.shape[0]
                 grid = self.grid.expand(expdim, *self.grid.shape)
                 x_coord_prime = transform_coordinates(grid, phi, dx, sc)
             # sample label from the constant prior or observe the value
@@ -229,23 +207,8 @@ class sstrVAE(baseVAE):
         zdims[-1] = zdims[-1] - self.coord
         zs = zs.view(-1, zs.size(-1))
         # For 1D, there is only translation
-        if self.ndim == 1:
-            dx = zs[:, 0:1]
-            zs = zs[:, 1:]
-            return None, dx, zs.view(*zdims)
-        phi, dx = tt(0), tt(0)
-        sc = torch.tensor(1).to(self.device)
-        if 'r' in self.invariances:
-            phi = zs[:, 0]
-            zs = zs[:, 1:]
-        if 't' in self.invariances:
-            dx = zs[:, :2]
-            zs = zs[:, 2:]
-        if 's' in self.invariances:
-            sc = sc + self.sc_prior * zs[:, 0]
-            zs = zs[:, 1:]
-        zs = zs.view(*zdims)
-        return phi, dx, sc, zs
+        phi, dx, sc, zs = self._split_latent(zs)
+        return phi, dx, sc, zs.view(*zdims)
 
     def model_classify(self, xs: torch.Tensor,
                        ys: Optional[torch.Tensor] = None,
