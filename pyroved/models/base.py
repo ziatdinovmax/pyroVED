@@ -65,10 +65,10 @@ class baseVAE(nn.Module):
             self.grid = generate_grid(data_dim).to(self.device)
         # Prior "belief" about the degree of translational disorder
         if self.coord > 0 and 't' in self.invariances:
-            dx_pri = torch.tensor(kwargs.get("dx_prior", 0.1))
+            dx_pri = tt(kwargs.get("dx_prior", 0.1))
             dy_pri = kwargs.get("dy_prior", dx_pri.clone())
             self.t_prior = (tt([dx_pri, dy_pri]) if self.ndim == 2
-                            else tt(dx_pri)).to(self.device)
+                            else dx_pri).to(self.device)
         # Prior "belief" about the degree of scale disorder
         if self.coord > 0 and 's' in self.invariances:
             self.sc_prior = kwargs.get("sc_prior", tt(0.1)).to(self.device)
