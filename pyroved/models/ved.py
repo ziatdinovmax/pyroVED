@@ -104,7 +104,7 @@ class VED(baseVAE):
         """
         Initializes VED's modules and parameters
         """
-        super(VED, self).__init__()
+        super(VED, self).__init__(output_dim, None, **kwargs)
         pyro.clear_param_store()
         set_deterministic_mode(seed)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'

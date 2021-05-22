@@ -14,39 +14,108 @@ import torch
 import torch.nn as nn
 import torch.tensor as tt
 
-from ..utils import init_dataloader, transform_coordinates
+from ..utils import init_dataloader, transform_coordinates, generate_grid
 
 
 class baseVAE(nn.Module):
-    """Base class for variational encoder-decoder models.
+    """Base class for regualr and invaraint variational encoder-decoder models.
+
+    Args:
+        data_dim:
+            Dimensionality of the input data; use (height x width) for images
+            or (length,) for spectra.
+        invariances:
+            List with invariances to enforce. For 2D systems, `r` enforces
+            rotational invariance, `t` enforces invariance to
+            translations, `sc` enforces a scale invariance, and
+            invariances=None corresponds to vanilla VAE.
+            For 1D systems, 't' enforces translational invariance and
+            invariances=None is vanilla VAE
 
     Keyword Args:
         device:
             Sets device to which model and data will be moved.
             Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
+        dx_prior:
+            Translational prior in x direction (float between 0 and 1)
+        dy_prior:
+            Translational prior in y direction (float between 0 and 1)
+        sc_prior:
+            Scale prior (usually, sc_prior << 1)
     """
-
-    def __init__(self, **kwargs: str):
+    def __init__(self, *args, **kwargs: str):
         super(baseVAE, self).__init__()
-
+        data_dim, invariances = args
+        # Set device
         self.device = kwargs.get(
             "device", 'cuda' if torch.cuda.is_available() else 'cpu')
+        # Set dimensionality
+        self.ndim = len(data_dim)
+        # Set invariances to enforce (number and type)
+        if invariances is None:
+            coord = 0
+        else:
+            coord = len(invariances)
+            if self.ndim == 1:
+                if coord > 1 or invariances[0] != 't':
+                    raise ValueError(
+                        "For 1D data, the only invariance to enforce "
+                        "is translation ('t')")
+            if 't' in invariances and self.ndim == 2:
+                coord = coord + 1
+        self.coord = coord
+        self.invariances = invariances
+        # Set coordiante grid
+        if self.coord > 0:
+            self.grid = generate_grid(data_dim).to(self.device)
+        # Prior "belief" about the degree of translational disorder
+        if self.coord > 0 and 't' in self.invariances:
+            dx_pri = tt(kwargs.get("dx_prior", 0.1))
+            dy_pri = kwargs.get("dy_prior", dx_pri.clone())
+            self.t_prior = (tt([dx_pri, dy_pri]) if self.ndim == 2
+                            else dx_pri).to(self.device)
+        # Prior "belief" about the degree of scale disorder
+        if self.coord > 0 and 's' in self.invariances:
+            self.sc_prior = kwargs.get("sc_prior", tt(0.1)).to(self.device)
+        # Encoder and decoder (None by default)
         self.encoder_z = None
         self.decoder = None
-        self.coord = 0
-        self.grid = None
 
     @abstractmethod
-    def model(self):
+    def model(self, *args, **kwargs):
         """Pyro's model"""
 
         raise NotImplementedError
 
     @abstractmethod
-    def guide(self):
+    def guide(self, *args, **kwargs):
         """Pyro's guide"""
 
         raise NotImplementedError
+
+    def _split_latent(self, z: torch.Tensor) -> Tuple[torch.Tensor]:
+        """
+        Split latent variable into parts for rotation
+        and/or translation and image content
+        """
+        # For 1D, there is only a translation
+        if self.ndim == 1:
+            dx = z[:, 0:1]
+            z = z[:, 1:]
+            return None, dx, None, z
+        phi = tt(0).to(self.device)
+        dx = tt(0).to(self.device)
+        sc = tt(1).to(self.device)
+        if 'r' in self.invariances:
+            phi = z[:, 0]
+            z = z[:, 1:]
+        if 't' in self.invariances:
+            dx = z[:, :2]
+            z = z[:, 2:]
+        if 's' in self.invariances:
+            sc = sc + self.sc_prior * z[:, 0]
+            z = z[:, 1:]
+        return phi, dx, sc, z
 
     def _encode(
         self,
@@ -78,16 +147,18 @@ class baseVAE(nn.Module):
             return loc.cpu()
 
         z_new = init_dataloader(z_new, shuffle=False, **kwargs)
-        if self.coord > 0:
+        if self.invariances:
             grid = self.grid
             a = kwargs.get("angle", tt(0.)).to(self.device)
             t = kwargs.get("shift", tt(0.)).to(self.device)
+            s = kwargs.get("scale", tt(1.)).to(self.device)
             grid = transform_coordinates(
-                grid.unsqueeze(0), a.unsqueeze(0), t.unsqueeze(0))
+                grid.unsqueeze(0), a.unsqueeze(0),
+                t.unsqueeze(0), s.unsqueeze(0))
             grid = grid.squeeze()
         x_decoded = []
         for z in z_new:
-            if self.coord > 0:
+            if self.invariances:
                 z = [grid.expand(z[0].shape[0], *grid.shape)] + z
             x_decoded.append(generator(z))
         return torch.cat(x_decoded)

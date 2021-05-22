@@ -7,7 +7,7 @@ with positional (rotation+translation) disorder
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
-from typing import Optional, Tuple, Union, Type
+from typing import Optional, Tuple, Union, Type, List
 
 import pyro
 import pyro.distributions as dist
@@ -24,7 +24,8 @@ from ..utils import (generate_grid, get_sampler, plot_img_grid,
 
 class sstrVAE(baseVAE):
     """
-    Semi-supervised variational autoencoder with rotational and/or translational invariance
+    Semi-supervised variational autoencoder with
+    rotational and/or translational and/or scale invariances
 
     Args:
         data_dim:
@@ -34,12 +35,13 @@ class sstrVAE(baseVAE):
             Number of latent dimensions.
         num_classes:
             Number of classes in the classification scheme
-        coord:
-            For 2D systems, *coord=0* is vanilla VAE, *coord=1* enforces
-            rotational invariance, *coord=2* enforces invariance to translations,
-            and *coord=3* enforces both rotational and translational invariances.
-            For 1D systems, *coord=0* is vanilla VAE and *coord>0* enforces
-            transaltional invariance.
+        invariances:
+            List with invariances to enforce. For 2D systems, `r` enforces
+            rotational invariance, `t` enforces invariance to
+            translations, `sc` enforces a scale invariance, and
+            invariances=None corresponds to vanilla VAE.
+            For 1D systems, 't' enforces translational invariance and
+            invariances=None is vanilla VAE
         hidden_dim_e:
             Number of hidden units per each layer in encoder (inference network).
         hidden_dim_d:
@@ -68,24 +70,26 @@ class sstrVAE(baseVAE):
             Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
         dx_prior:
             Translational prior in x direction (float between 0 and 1)
-        dx_prior:
+        dy_prior:
             Translational prior in y direction (float between 0 and 1)
+        sc_prior:
+            Scale prior (usually, sc_prior << 1)
         decoder_sig:
             Sets sigma for a "gaussian" decoder sampler
 
     Example:
 
     Initialize a VAE model with rotational invariance for
-    semisupervised learning of the dataset that has 10 classes
+    semi-supervised learning of the dataset that has 10 classes
 
     >>> data_dim = (28, 28)
-    >>> ssvae = sstrVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
+    >>> ssvae = sstrVAE(data_dim, latent_dim=2, num_classes=10, invariances=['r'])
     """
     def __init__(self,
                  data_dim: Tuple[int],
                  latent_dim: int,
                  num_classes: int,
-                 coord: int = 3,
+                 invariances: List[str] = None,
                  hidden_dim_e: int = 128,
                  hidden_dim_d: int = 128,
                  hidden_dim_cls: int = 128,
@@ -100,33 +104,34 @@ class sstrVAE(baseVAE):
         """
         Initializes sstrVAE parameters
         """
-        super(sstrVAE, self).__init__(**kwargs)
+        args = (data_dim, invariances)
+        super(sstrVAE, self).__init__(*args, **kwargs)
         pyro.clear_param_store()
         set_deterministic_mode(seed)
-        if coord not in [0, 1, 2, 3]:
-            raise ValueError("'coord' argument must be 0, 1, 2 or 3")
-        self.ndim = len(data_dim)
-        if self.ndim == 1 and coord > 0:
-            coord = 1
+
         self.data_dim = data_dim
+
+        # Initialize z-Encoder neural network
         self.encoder_z = fcEncoderNet(
-            data_dim, latent_dim+coord, num_classes,
+            data_dim, latent_dim+self.coord, num_classes,
             hidden_dim_e, num_layers_e, flat=False)
+
+        # Initialize y-Encoder neural network
         self.encoder_y = fcClassifierNet(
             data_dim, num_classes, hidden_dim_cls, num_layers_cls)
-        dnet = sDecoderNet if coord in [1, 2, 3] else fcDecoderNet
+
+        # Initializes Decoder neural network
+        dnet = sDecoderNet if 0 < self.coord < 5 else fcDecoderNet
         self.decoder = dnet(
             data_dim, latent_dim, num_classes, hidden_dim_d,
             num_layers_d, sigmoid_out=sigmoid_d, unflat=False)
         self.sampler_d = get_sampler(sampler_d, **kwargs)
-        self.z_dim = latent_dim + coord
+
+        # Sets continuous and discrete dimensions
+        self.z_dim = latent_dim + self.coord
         self.num_classes = num_classes
-        self.coord = coord
-        self.grid = generate_grid(data_dim).to(self.device)
-        dx_pri = tt(kwargs.get("dx_prior", 0.1))
-        dy_pri = kwargs.get("dy_prior", dx_pri.clone())
-        t_prior = tt([dx_pri, dy_pri]) if self.ndim == 2 else dx_pri
-        self.t_prior = t_prior.to(self.device)
+
+        # Send model parameters to their appropriate devices.
         self.to(self.device)
 
     def model(self,
@@ -151,16 +156,18 @@ class sstrVAE(baseVAE):
             # split latent variable into parts for rotation and/or translation
             # and image content
             if self.coord > 0:
-                phi, dx, zs = self.split_latent(zs)
-                if torch.sum(dx.abs()) != 0:
+                phi, dx, sc, zs = self.split_latent(zs)
+                if 't' in self.invariances:
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
-                if self.ndim > 1:
-                    expdim = dx.shape[0] if self.coord > 1 else phi.shape[0]
-                else:
+                if 'r' in self.invariances:
+                    expdim = phi.shape[0]
+                elif 't' in self.invariances:
                     expdim = dx.shape[0]
+                elif 's' in self.invariances:
+                    expdim = sc.shape[0]
                 grid = self.grid.expand(expdim, *self.grid.shape)
-                x_coord_prime = transform_coordinates(grid, phi, dx)
+                x_coord_prime = transform_coordinates(grid, phi, dx, sc)
             # sample label from the constant prior or observe the value
             alpha_prior = (torch.ones(batch_dim, self.num_classes, **specs) /
                            self.num_classes)
@@ -200,26 +207,8 @@ class sstrVAE(baseVAE):
         zdims[-1] = zdims[-1] - self.coord
         zs = zs.view(-1, zs.size(-1))
         # For 1D, there is only translation
-        if self.ndim == 1:
-            dx = zs[:, 0:1]
-            zs = zs[:, 1:]
-            return None, dx, zs.view(*zdims)
-        phi, dx = tt(0), tt(0)
-        # rotation + translation
-        if self.coord == 3:
-            phi = zs[:, 0]  # encoded angle
-            dx = zs[:, 1:3]  # translation
-            zs = zs[:, 3:]  # image content
-        # translation only
-        elif self.coord == 2:
-            dx = zs[:, :2]
-            zs = zs[:, 2:]
-        # rotation only
-        elif self.coord == 1:
-            phi = zs[:, 0]
-            zs = zs[:, 1:]
-        zs = zs.view(*zdims)
-        return phi, dx, zs
+        phi, dx, sc, zs = self._split_latent(zs)
+        return phi, dx, sc, zs.view(*zdims)
 
     def model_classify(self, xs: torch.Tensor,
                        ys: Optional[torch.Tensor] = None,
