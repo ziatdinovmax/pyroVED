@@ -36,8 +36,13 @@ class baseVAE(nn.Module):
         device:
             Sets device to which model and data will be moved.
             Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
+        dx_prior:
+            Translational prior in x direction (float between 0 and 1)
+        dy_prior:
+            Translational prior in y direction (float between 0 and 1)
+        sc_prior:
+            Scale prior (usually, sc_prior << 1)
     """
-
     def __init__(self, *args, **kwargs: str):
         super(baseVAE, self).__init__()
         data_dim, invariances = args
