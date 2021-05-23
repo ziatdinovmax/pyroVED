@@ -57,8 +57,8 @@ class trVAE(baseVAE):
         activation:
             Non-linear activation for inner layers of encoder and decoder.
             The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
-            hyberbolic tangent ('tanh'), and softplus ('softplus')
-            The default activation is 'tanh'. (The default is "tanh").
+            hyberbolic tangent ('tanh'), softplus ('softplus'), and GELU ('gelu').
+            (The default is 'tanh').
         sampler_d:
             Decoder sampler, as defined as p(x|z) = sampler(decoder(z)).
             The available samplers are 'bernoulli', 'continuous_bernoulli',

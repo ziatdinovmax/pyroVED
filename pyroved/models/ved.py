@@ -55,10 +55,11 @@ class VED(baseVAE):
             List with numbers of layers per each block of the decoder NN.
             Defaults to [2, 2, 1] if none is specified.
         activation:
+            activation:
             Non-linear activation for inner layers of encoder and decoder.
             The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
-            hyberbolic tangent ('tanh'), and softplus ('softplus')
-            The default activation is 'tanh'.
+            hyberbolic tangent ('tanh'), softplus ('softplus'), and GELU ('gelu').
+            (The default is 'lrelu').
         batchnorm:
             Batch normalization attached to each convolutional layer
             after non-linear activation (except for layers with 1x1 filters)

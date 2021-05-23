@@ -53,5 +53,6 @@ def get_activation(activation: int) -> Type[nn.Module]:
     if activation is None:
         return
     activations = {"lrelu": nn.LeakyReLU, "tanh": nn.Tanh,
-                   "softplus": nn.Softplus, "relu": nn.ReLU}
+                   "softplus": nn.Softplus, "relu": nn.ReLU,
+                   "gelu": nn.GELU}
     return activations[activation]

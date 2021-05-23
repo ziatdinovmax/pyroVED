@@ -54,6 +54,11 @@ class sstrVAE(baseVAE):
             Number of layers in decoder (generator network).
         num_layers_cls:
             Number of layers in classifier
+        activation:
+            Non-linear activation for inner layers of both encoder and the decoder.
+            The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
+            hyberbolic tangent ('tanh'), softplus ('softplus'), and GELU ('gelu').
+            (The default is "tanh").
         sampler_d:
             Decoder sampler, as defined as p(x|z) = sampler(decoder(z)).
             The available samplers are 'bernoulli', 'continuous_bernoulli',
@@ -96,6 +101,7 @@ class sstrVAE(baseVAE):
                  num_layers_e: int = 2,
                  num_layers_d: int = 2,
                  num_layers_cls: int = 2,
+                 activation: str = "tanh",
                  sampler_d: str = "bernoulli",
                  sigmoid_d: bool = True,
                  seed: int = 1,
@@ -114,17 +120,19 @@ class sstrVAE(baseVAE):
         # Initialize z-Encoder neural network
         self.encoder_z = fcEncoderNet(
             data_dim, latent_dim+self.coord, num_classes,
-            hidden_dim_e, num_layers_e, flat=False)
+            hidden_dim_e, num_layers_e, activation, flat=False)
 
         # Initialize y-Encoder neural network
         self.encoder_y = fcClassifierNet(
-            data_dim, num_classes, hidden_dim_cls, num_layers_cls)
+            data_dim, num_classes, hidden_dim_cls, num_layers_cls,
+            activation)
 
         # Initializes Decoder neural network
         dnet = sDecoderNet if 0 < self.coord < 5 else fcDecoderNet
         self.decoder = dnet(
             data_dim, latent_dim, num_classes, hidden_dim_d,
-            num_layers_d, sigmoid_out=sigmoid_d, unflat=False)
+            num_layers_d, activation, sigmoid_out=sigmoid_d,
+            unflat=False)
         self.sampler_d = get_sampler(sampler_d, **kwargs)
 
         # Sets continuous and discrete dimensions
