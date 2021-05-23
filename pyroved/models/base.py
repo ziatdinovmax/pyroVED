@@ -18,7 +18,7 @@ from ..utils import init_dataloader, transform_coordinates, generate_grid
 
 
 class baseVAE(nn.Module):
-    """Base class for regualr and invaraint variational encoder-decoder models.
+    """Base class for regular and invriant variational encoder-decoder models.
 
     Args:
         data_dim:

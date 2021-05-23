@@ -1,5 +1,5 @@
 """
-trvae.py
+ivae.py
 =========
 
 Variational autoencoder with rotational and/or translational invariances
@@ -22,7 +22,7 @@ from pyroved.utils import (
 )
 
 
-class trVAE(baseVAE):
+class iVAE(baseVAE):
     """Variational autoencoder that enforces rotational and/or translational
         and/or scale invariances
 
@@ -86,13 +86,13 @@ class trVAE(baseVAE):
         Initialize a VAE model with rotational invariance
 
         >>> data_dim = (28, 28)
-        >>> rvae = trVAE(data_dim, latent_dim=2, invariances=['r'])
+        >>> rvae = iVAE(data_dim, latent_dim=2, invariances=['r'])
 
         Initialize a class-conditioned VAE model with rotational and
         translational invarainces for dataset that has 10 classes
 
         >>> data_dim = (28, 28)
-        >>> rvae = trVAE(data_dim, latent_dim=2,
+        >>> rvae = iVAE(data_dim, latent_dim=2,
         >>>              num_classes=10, invariances=['r', 't'])
     """
 
@@ -113,7 +113,7 @@ class trVAE(baseVAE):
         **kwargs: Union[str, float]
          ) -> None:
         args = (data_dim, invariances)
-        super(trVAE, self).__init__(*args, **kwargs)
+        super(iVAE, self).__init__(*args, **kwargs)
 
         # Reset the pyro ParamStoreDict object's dictionaries
         pyro.clear_param_store()

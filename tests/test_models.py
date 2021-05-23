@@ -105,7 +105,7 @@ def test_trvae_sites_dims_2d(invariances):
         coord = len(invariances)
         if 't' in invariances and len(data_dim[1:]) == 2:
             coord = coord + 1
-    model = models.trVAE(data_dim[1:], invariances=invariances)
+    model = models.iVAE(data_dim[1:], invariances=invariances)
     guide_trace, model_trace = get_traces(model, x)
     assert_equal(model_trace.nodes["latent"]['value'].shape,
                  (data_dim[0], coord+2))
@@ -120,7 +120,7 @@ def test_trvae_sites_dims_1d(invariances):
     data_dim = (3, 8)
     x = torch.randn(*data_dim)
     coord = 0 if invariances is None else len(invariances)
-    model = models.trVAE(data_dim[1:], invariances=invariances)
+    model = models.iVAE(data_dim[1:], invariances=invariances)
     guide_trace, model_trace = get_traces(model, x)
     assert_equal(model_trace.nodes["latent"]['value'].shape,
                  (data_dim[0], coord+2))
@@ -134,7 +134,7 @@ def test_trvae_sites_dims_1d(invariances):
 @pytest.mark.parametrize("data_dim", [(3, 8, 8), (3, 8)])
 def test_trvae_sites_fn(data_dim, invariances):
     x = torch.randn(*data_dim)
-    model = models.trVAE(data_dim[1:], invariances=invariances)
+    model = models.iVAE(data_dim[1:], invariances=invariances)
     guide_trace, model_trace = get_traces(model, x)
     assert_(isinstance(model_trace.nodes["latent"]['fn'].base_dist, dist.Normal))
     assert_(isinstance(guide_trace.nodes["latent"]['fn'].base_dist, dist.Normal))
@@ -179,7 +179,7 @@ def test_jtrvae_cont_sites_dims_2d(invariances):
         coord = len(invariances)
         if 't' in invariances and len(data_dim[1:]) == 2:
             coord = coord + 1
-    model = models.jtrVAE(data_dim[1:], 2, 3, invariances=invariances)
+    model = models.jiVAE(data_dim[1:], 2, 3, invariances=invariances)
     guide_trace, model_trace = get_enum_traces(model, x)
     assert_equal(model_trace.nodes["latent_cont"]['value'].shape,
                  (data_dim[0], coord+2))
@@ -198,7 +198,7 @@ def test_jtrvae_disc_sites_dims(invariances):
         coord = len(invariances)
         if 't' in invariances and len(data_dim[1:]) == 2:
             coord = coord + 1
-    model = models.jtrVAE(data_dim[1:], 2, 3, invariances=invariances)
+    model = models.jiVAE(data_dim[1:], 2, 3, invariances=invariances)
     guide_trace, model_trace = get_enum_traces(model, x)
     assert_equal(model_trace.nodes["latent_disc"]['value'].shape,
                  (3, data_dim[0], 3))
@@ -215,7 +215,7 @@ def test_jtrvae_cont_sites_fn(invariances):
         coord = len(invariances)
         if 't' in invariances and len(data_dim[1:]) == 2:
             coord = coord + 1
-    model = models.jtrVAE(data_dim[1:], 2, 3, invariances=invariances)
+    model = models.jiVAE(data_dim[1:], 2, 3, invariances=invariances)
     guide_trace, model_trace = get_enum_traces(model, x)
     assert_(isinstance(model_trace.nodes["latent_cont"]['fn'].base_dist, dist.Normal))
     assert_(isinstance(guide_trace.nodes["latent_cont"]['fn'].base_dist, dist.Normal))
@@ -231,7 +231,7 @@ def test_jtrvae_disc_sites_fn(invariances):
         coord = len(invariances)
         if 't' in invariances and len(data_dim[1:]) == 2:
             coord = coord + 1
-    model = models.jtrVAE(data_dim[1:], 2, 3, invariances=invariances)
+    model = models.jiVAE(data_dim[1:], 2, 3, invariances=invariances)
     guide_trace, model_trace = get_enum_traces(model, x)
     assert_(isinstance(model_trace.nodes["latent_disc"]['fn'], dist.OneHotCategorical))
     assert_(isinstance(guide_trace.nodes["latent_disc"]['fn'], dist.OneHotCategorical))
@@ -246,7 +246,7 @@ def test_sstrvae_cont_sites_dims(invariances):
         coord = len(invariances)
         if 't' in invariances and len(data_dim[1:]) == 2:
             coord = coord + 1
-    model = models.sstrVAE(data_dim[1:], 2, 3, invariances=invariances)
+    model = models.ssiVAE(data_dim[1:], 2, 3, invariances=invariances)
     guide_trace, model_trace = get_enum_traces(model, x)
     assert_equal(model_trace.nodes["z"]['value'].shape,
                  (3, data_dim[0], coord+2))
@@ -265,7 +265,7 @@ def test_sstrvae_disc_sites_dims(invariances):
         coord = len(invariances)
         if 't' in invariances and len(data_dim[1:]) == 2:
             coord = coord + 1
-    model = models.sstrVAE(data_dim[1:], 2, 3, invariances=invariances)
+    model = models.ssiVAE(data_dim[1:], 2, 3, invariances=invariances)
     guide_trace, model_trace = get_enum_traces(model, x)
     assert_equal(model_trace.nodes["y"]['value'].shape,
                  (3, data_dim[0], 3))
@@ -282,7 +282,7 @@ def test_sstrvae_cont_sites_fn(invariances):
         coord = len(invariances)
         if 't' in invariances and len(data_dim[1:]) == 2:
             coord = coord + 1
-    model = models.sstrVAE(data_dim[1:], 2, 3, invariances=invariances)
+    model = models.ssiVAE(data_dim[1:], 2, 3, invariances=invariances)
     guide_trace, model_trace = get_enum_traces(model, x)
     assert_(isinstance(model_trace.nodes["z"]['fn'].base_dist, dist.Normal))
     assert_(isinstance(guide_trace.nodes["z"]['fn'].base_dist, dist.Normal))
@@ -298,7 +298,7 @@ def test_sstrvae_disc_sites_fn(invariances):
         coord = len(invariances)
         if 't' in invariances and len(data_dim[1:]) == 2:
             coord = coord + 1
-    model = models.sstrVAE(data_dim[1:], 2, 3, invariances=invariances)
+    model = models.ssiVAE(data_dim[1:], 2, 3, invariances=invariances)
     guide_trace, model_trace = get_enum_traces(model, x)
     assert_(isinstance(model_trace.nodes["y"]['fn'], dist.OneHotCategorical))
     assert_(isinstance(guide_trace.nodes["y"]['fn'], dist.OneHotCategorical))
@@ -311,7 +311,7 @@ def test_sstrvae_disc_sites_fn(invariances):
 def test_trvae_decoder_sampler(sampler, expected_dist):
     data_dim = (2, 8, 8)
     x = torch.randn(*data_dim)
-    model = models.trVAE(data_dim[1:], coord=1, sampler_d=sampler)
+    model = models.iVAE(data_dim[1:], coord=1, sampler_d=sampler)
     _, model_trace = get_traces(model, x)
     assert_(isinstance(model_trace.nodes["obs"]['fn'].base_dist, expected_dist))
 
@@ -337,7 +337,7 @@ def test_ved_decoder_sampler(sampler, expected_dist):
 def test_jtrvae_decoder_sampler(sampler, expected_dist):
     data_dim = (2, 8, 8)
     x = torch.randn(*data_dim)
-    model = models.jtrVAE(data_dim[1:], 2, 3, coord=1, sampler_d=sampler)
+    model = models.jiVAE(data_dim[1:], 2, 3, coord=1, sampler_d=sampler)
     _, model_trace = get_enum_traces(model, x)
     assert_(isinstance(model_trace.nodes["obs"]['fn'].base_dist, expected_dist))
 
@@ -349,7 +349,7 @@ def test_jtrvae_decoder_sampler(sampler, expected_dist):
 def test_sstrvae_decoder_sampler(sampler, expected_dist):
     data_dim = (2, 64)
     x = torch.randn(*data_dim)
-    model = models.sstrVAE(data_dim[1:], 2, 3, coord=1, sampler_d=sampler)
+    model = models.ssiVAE(data_dim[1:], 2, 3, coord=1, sampler_d=sampler)
     _, model_trace = get_enum_traces(model, x)
     assert_(isinstance(model_trace.nodes["x"]['fn'].base_dist, expected_dist))
 
@@ -397,7 +397,7 @@ def test_basevae_decode_x(invariances):
     assert_equal(decoded.squeeze().shape, data_dim)
 
 
-@pytest.mark.parametrize("vae_model", [models.jtrVAE, models.sstrVAE])
+@pytest.mark.parametrize("vae_model", [models.jiVAE, models.ssiVAE])
 @pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['r', 't', 's']])
 def test_jsstrvae_decode(vae_model, invariances):
     data_dim = (38, 8)
@@ -411,7 +411,7 @@ def test_jsstrvae_decode(vae_model, invariances):
 @pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['r', 't', 's']])
 def test_trvae_decode_2d(invariances):
     data_dim = (8, 8)
-    model = models.trVAE(data_dim, invariances=invariances)
+    model = models.iVAE(data_dim, invariances=invariances)
     z_coord = torch.tensor([0.0, 0.0]).unsqueeze(0)
     decoded = model.decode(z_coord)
     assert_equal(decoded.squeeze().shape, data_dim)
@@ -420,7 +420,7 @@ def test_trvae_decode_2d(invariances):
 @pytest.mark.parametrize("invariances", [None, ['t']])
 def test_trvae_decode_1d(invariances):
     data_dim = (8,)
-    model = models.trVAE(data_dim, invariances=invariances)
+    model = models.iVAE(data_dim, invariances=invariances)
     z_coord = torch.tensor([0.0, 0.0]).unsqueeze(0)
     decoded = model.decode(z_coord)
     assert_equal(decoded.squeeze().shape, data_dim)
@@ -439,7 +439,7 @@ def test_ved_decode(input_dim, output_dim):
 @pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['r', 't', 's']])
 def test_ctrvae_decode(invariances):
     data_dim = (8, 8)
-    model = models.trVAE(data_dim, num_classes=3, invariances=invariances)
+    model = models.iVAE(data_dim, num_classes=3, invariances=invariances)
     z_coord = torch.tensor([0.0, 0.0]).unsqueeze(0)
     y = utils.to_onehot(torch.tensor(0).unsqueeze(0), 3)
     decoded = model.decode(z_coord, y)
@@ -455,7 +455,7 @@ def test_trvae_encode_2d(invariances):
         coord = len(invariances)
         if 't' in invariances and len(data_dim[1:]) == 2:
             coord = coord + 1
-    model = models.trVAE(data_dim[1:], 2, invariances=invariances)
+    model = models.iVAE(data_dim[1:], 2, invariances=invariances)
     encoded = model.encode(x)
     assert_equal(encoded[0].shape, (data_dim[0], coord+2))
     assert_equal(encoded[0].shape, encoded[1].shape)
@@ -466,7 +466,7 @@ def test_trvae_encode_1d(invariances):
     data_dim = (3, 8)
     x = torch.randn(*data_dim)
     coord = 0 if invariances is None else len(invariances)
-    model = models.trVAE(data_dim[1:], 2, invariances=invariances)
+    model = models.iVAE(data_dim[1:], 2, invariances=invariances)
     encoded = model.encode(x)
     assert_equal(encoded[0].shape, (data_dim[0], coord+2))
     assert_equal(encoded[0].shape, encoded[1].shape)
@@ -492,7 +492,7 @@ def test_jtrvae_encode(invariances):
         coord = len(invariances)
         if 't' in invariances:
             coord = coord + 1
-    model = models.jtrVAE(data_dim[1:], 2, 3, invariances=invariances)
+    model = models.jiVAE(data_dim[1:], 2, 3, invariances=invariances)
     encoded = model.encode(x)
     assert_equal(encoded[0].shape, encoded[1].shape)
     assert_equal(encoded[0].shape, (data_dim[0], coord+2))
@@ -508,7 +508,7 @@ def test_sstrvae_encode(invariances):
         coord = len(invariances)
         if 't' in invariances:
             coord = coord + 1
-    model = models.sstrVAE(data_dim[1:], 2, 5, invariances=invariances)
+    model = models.ssiVAE(data_dim[1:], 2, 5, invariances=invariances)
     encoded = model.encode(x)
     assert_equal(encoded[0].shape, encoded[1].shape)
     assert_equal(encoded[0].shape, (data_dim[0], coord+2))
@@ -519,7 +519,7 @@ def test_sstrvae_encode(invariances):
 @pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['t'], ['r', 't', 's']])
 def test_trvae_manifold2d(invariances, num_classes):
     data_dim = (8, 8)
-    model = models.trVAE(data_dim, num_classes=num_classes, invariances=invariances)
+    model = models.iVAE(data_dim, num_classes=num_classes, invariances=invariances)
     decoded_grid = model.manifold2d(4, plot=False)
     assert_equal(decoded_grid.squeeze().shape, (16, *data_dim))
 
@@ -533,7 +533,7 @@ def test_ved_manifold2d(input_dim, output_dim):
     assert_equal(decoded_grid.squeeze().shape, (16, *output_dim))
 
 
-@pytest.mark.parametrize("vae_model", [models.jtrVAE, models.sstrVAE])
+@pytest.mark.parametrize("vae_model", [models.jiVAE, models.ssiVAE])
 @pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['t'], ['r', 't', 's']])
 def test_jsstrvae_manifold2d(vae_model, invariances):
     data_dim = (8, 8)

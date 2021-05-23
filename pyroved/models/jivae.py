@@ -1,5 +1,5 @@
 """
-jtrvae.py
+jivae.py
 =========
 
 Variational autoencoder for learning (jointly) discrete and
@@ -23,7 +23,7 @@ from ..utils import (generate_grid, generate_latent_grid,
 from .base import baseVAE
 
 
-class jtrVAE(baseVAE):
+class jiVAE(baseVAE):
     """
     Variational autoencoder for learning (jointly) discrete and
     continuous latent representations on data with arbitrary rotations
@@ -85,7 +85,7 @@ class jtrVAE(baseVAE):
     Initialize a joint VAE model with rotational invariance for 10 discrete classes
 
     >>> data_dim = (28, 28)
-    >>> jrvae = jtrVAE(data_dim, latent_dim=2, discrete_dim=10, invariances=['r'])
+    >>> jrvae = jiVAE(data_dim, latent_dim=2, discrete_dim=10, invariances=['r'])
     """
 
     def __init__(self,
@@ -107,7 +107,7 @@ class jtrVAE(baseVAE):
         Initializes jtrVAE's modules and parameters
         """
         args = (data_dim, invariances)
-        super(jtrVAE, self).__init__(*args, **kwargs)
+        super(jiVAE, self).__init__(*args, **kwargs)
         pyro.clear_param_store()
         set_deterministic_mode(seed)
         self.data_dim = data_dim
