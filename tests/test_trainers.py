@@ -27,7 +27,7 @@ def test_svi_trainer_trvae(invariances):
     data_dim = (5, 8, 8)
     train_data = torch.randn(*data_dim)
     train_loader = utils.init_dataloader(train_data, batch_size=2)
-    vae = models.trVAE(data_dim[1:], 2, invariances)
+    vae = models.iVAE(data_dim[1:], 2, invariances)
     trainer = trainers.SVItrainer(vae)
     weights_before = dc(vae.state_dict())
     for _ in range(2):
@@ -42,7 +42,7 @@ def test_svi_trainer_jtrvae(invariances):
     data_dim = (5, 8, 8)
     train_data = torch.randn(*data_dim)
     train_loader = utils.init_dataloader(train_data, batch_size=2)
-    vae = models.jtrVAE(data_dim[1:], 2, 3, invariances)
+    vae = models.jiVAE(data_dim[1:], 2, 3, invariances)
     trainer = trainers.SVItrainer(vae, enumerate_parallel=True)
     weights_before = dc(vae.state_dict())
     for _ in range(2):
@@ -60,7 +60,7 @@ def test_auxsvi_trainer(invariances):
     labels = dist.OneHotCategorical(torch.ones(data_dim[0], 3)).sample()
     loader_unsup, loader_sup, _ = utils.init_ssvae_dataloaders(
         train_unsup, (train_sup, labels), (train_sup, labels), batch_size=2)
-    vae = models.sstrVAE(data_dim[1:], 2, 3, invariances)
+    vae = models.ssiVAE(data_dim[1:], 2, 3, invariances)
     trainer = trainers.auxSVItrainer(vae)
     weights_before = dc(vae.state_dict())
     for _ in range(2):

@@ -1,9 +1,9 @@
 """
 Variational autoencoder and encoder-decoder models
 """
-from .trvae import trVAE
-from .sstrvae import sstrVAE
-from .jtrvae import jtrVAE
+from .ivae import iVAE
+from .ssivae import ssiVAE
+from .jivae import jiVAE
 from .ved import VED
 
-__all__ = ['trVAE', 'jtrVAE', 'sstrVAE', 'VED']
+__all__ = ['iVAE', 'jiVAE', 'ssiVAE', 'VED']

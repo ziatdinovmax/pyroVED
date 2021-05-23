@@ -1,5 +1,5 @@
 """
-sstrvae.py
+ssivae.py
 =========
 
 Semi-supervised variational autoencoder for data
@@ -22,7 +22,7 @@ from ..utils import (generate_grid, get_sampler, plot_img_grid,
                      generate_latent_grid_traversal, plot_grid_traversal)
 
 
-class sstrVAE(baseVAE):
+class ssiVAE(baseVAE):
     """
     Semi-supervised variational autoencoder with
     rotational and/or translational and/or scale invariances
@@ -88,7 +88,7 @@ class sstrVAE(baseVAE):
     semi-supervised learning of the dataset that has 10 classes
 
     >>> data_dim = (28, 28)
-    >>> ssvae = sstrVAE(data_dim, latent_dim=2, num_classes=10, invariances=['r'])
+    >>> ssvae = ssiVAE(data_dim, latent_dim=2, num_classes=10, invariances=['r'])
     """
     def __init__(self,
                  data_dim: Tuple[int],
@@ -111,7 +111,7 @@ class sstrVAE(baseVAE):
         Initializes sstrVAE parameters
         """
         args = (data_dim, invariances)
-        super(sstrVAE, self).__init__(*args, **kwargs)
+        super(ssiVAE, self).__init__(*args, **kwargs)
         pyro.clear_param_store()
         set_deterministic_mode(seed)
 
