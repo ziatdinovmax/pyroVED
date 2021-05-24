@@ -33,7 +33,7 @@ class auxSVItrainer:
 
     >>> # Initialize model for semi supervised learning
     >>> data_dim = (28, 28)
-    >>> ssvae = pyroved.models.sstrVAE(data_dim, latent_dim=2, num_classes=10, coord=1)
+    >>> ssvae = pyroved.models.sstrVAE(data_dim, latent_dim=2, num_classes=10, invariances=['r'])
     >>> # Initialize SVI trainer for models with auxiliary loss terms
     >>> trainer = auxSVItrainer(ssvae)
     >>> # Train for 200 epochs:
