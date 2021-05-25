@@ -3,7 +3,7 @@ pyroVED models
 
 trVAE
 -----
-.. autoclass:: pyroved.models.trVAE
+.. autoclass:: pyroved.models.iVAE
     :members:
     :inherited-members:
     :undoc-members:
@@ -12,7 +12,7 @@ trVAE
 
 j-trVAE
 -------
-.. autoclass:: pyroved.models.jtrVAE
+.. autoclass:: pyroved.models.jiVAE
     :members:
     :inherited-members:
     :undoc-members:
@@ -21,7 +21,7 @@ j-trVAE
 
 ss-trVAE
 --------
-.. autoclass:: pyroved.models.sstrVAE
+.. autoclass:: pyroved.models.ssiVAE
     :members:
     :inherited-members:
     :undoc-members:
