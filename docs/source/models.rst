@@ -1,7 +1,7 @@
 pyroVED models
 ==============
 
-trVAE
+iVAE
 -----
 .. autoclass:: pyroved.models.iVAE
     :members:
@@ -10,7 +10,7 @@ trVAE
     :member-order: bysource
     :show-inheritance:
 
-j-trVAE
+j-iVAE
 -------
 .. autoclass:: pyroved.models.jiVAE
     :members:
@@ -19,7 +19,7 @@ j-trVAE
     :member-order: bysource
     :show-inheritance:
 
-ss-trVAE
+ss-iVAE
 --------
 .. autoclass:: pyroved.models.ssiVAE
     :members:
