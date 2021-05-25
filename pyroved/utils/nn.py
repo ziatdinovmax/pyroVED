@@ -1,7 +1,35 @@
-from typing import Type
+from typing import Type, Dict
+
+from copy import deepcopy as dc
 
 import torch
 import torch.nn as nn
+
+
+def average_weights(ensemble: Dict[int, Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
+    """
+    Averages weights of all models in the ensemble
+
+    Args:
+        ensemble:
+            Dictionary with trained weights (model's state_dict)
+            of models with exact same architecture.
+
+    Returns:
+        Averaged weights (as model's state_dict)
+    """
+    ensemble = {k - min(ensemble.keys()): v for (k, v) in ensemble.items()}
+    ensemble_state_dict = dc(ensemble[0])
+    names = [name for name in ensemble_state_dict.keys() if
+             name.split('_')[-1] not in ["mean", "var", "tracked"]]
+    for name in names:
+        w_aver = []
+        for model in ensemble.values():
+            for n, p in model.items():
+                if n == name:
+                    w_aver.append(dc(p))
+        ensemble_state_dict[name].copy_(sum(w_aver) / float(len(w_aver)))
+    return ensemble_state_dict
 
 
 def to_onehot(idx: torch.Tensor, n: int) -> torch.Tensor:
