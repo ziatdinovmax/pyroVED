@@ -26,8 +26,8 @@ from .base import baseVAE
 class jiVAE(baseVAE):
     """
     Variational autoencoder for learning (jointly) discrete and
-    continuous latent representations on data with arbitrary rotations
-    and/or translations
+    continuous latent representations of data while enforcing rotational,
+    translational, and scale invariances.
 
     Args:
         data_dim:

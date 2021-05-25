@@ -24,8 +24,8 @@ from ..utils import (generate_grid, get_sampler, plot_img_grid,
 
 class ssiVAE(baseVAE):
     """
-    Semi-supervised variational autoencoder with
-    rotational and/or translational and/or scale invariances
+    Semi-supervised variational autoencoder with the enforcement
+    of rotational, translational, and scale invariances
 
     Args:
         data_dim:

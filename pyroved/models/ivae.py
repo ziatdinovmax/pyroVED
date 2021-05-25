@@ -23,8 +23,9 @@ from pyroved.utils import (
 
 
 class iVAE(baseVAE):
-    """Variational autoencoder that enforces rotational and/or translational
-        and/or scale invariances
+    """
+    Variational autoencoder that enforces rotational, translational,
+    and scale invariances
 
     Args:
         data_dim:
