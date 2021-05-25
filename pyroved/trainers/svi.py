@@ -12,7 +12,7 @@ class SVItrainer:
     """
     Stochastic variational inference (SVI) trainer for
     unsupervised and class-conditioned VED models consisting
-    one encoder and one decoder.
+    of one encoder and one decoder.
 
     Args:
         model:
@@ -39,9 +39,9 @@ class SVItrainer:
 
     >>> # Initialize model
     >>> data_dim = (28, 28)
-    >>> rvae = pyroved.models.trVAE(data_dim, latent_dim=2, invariances=['r', 't'])
+    >>> trvae = pyroved.models.iVAE(data_dim, latent_dim=2, invariances=['r', 't'])
     >>> # Initialize SVI trainer
-    >>> trainer = SVItrainer(rvae)
+    >>> trainer = SVItrainer(trvae)
     >>> # Train for 200 epochs:
     >>> for _ in range(200):
     >>>     trainer.step(train_loader)
@@ -51,7 +51,7 @@ class SVItrainer:
 
     >>> # Initialize model
     >>> data_dim = (28, 28)
-    >>> rvae = pyroved.models.trVAE(data_dim, latent_dim=2, invariances=['r'])
+    >>> rvae = pyroved.models.iVAE(data_dim, latent_dim=2, invariances=['r'])
     >>> # Initialize SVI trainer
     >>> trainer = SVItrainer(rvae)
     >>> kl_scale = torch.linspace(1, 4, 50) # ramp-up KL scale factor from 1 to 4 during first 50 epochs
