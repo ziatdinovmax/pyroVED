@@ -76,7 +76,7 @@ class baseVAE(nn.Module):
                             else dx_pri).to(self.device)
         # Prior "belief" about the degree of scale disorder
         if self.coord > 0 and 's' in self.invariances:
-            self.sc_prior = kwargs.get("sc_prior", tt(0.1)).to(self.device)
+            self.sc_prior = tt(kwargs.get("sc_prior", 0.1)).to(self.device)
         # Encoder and decoder (None by default)
         self.encoder_z = None
         self.decoder = None
