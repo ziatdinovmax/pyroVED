@@ -168,7 +168,7 @@ class auxSVItrainer:
         """
         net = getattr(self.model, net)
         state_dict_ = OrderedDict()
-        for k, v in net:
+        for k, v in net.state_dict().items():
             state_dict_[k] = dc(v).cpu()
         self.running_weights[self.current_epoch] = state_dict_
 
