@@ -26,12 +26,14 @@ def assert_weights_equal(m1, m2):
 def test_svi_trainer_trvae(invariances):
     data_dim = (5, 8, 8)
     train_data = torch.randn(*data_dim)
+    test_data = torch.randn(*data_dim)
     train_loader = utils.init_dataloader(train_data, batch_size=2)
+    test_loader = utils.init_dataloader(test_data, batch_size=2)
     vae = models.iVAE(data_dim[1:], 2, invariances)
     trainer = trainers.SVItrainer(vae)
     weights_before = dc(vae.state_dict())
     for _ in range(2):
-        trainer.step(train_loader)
+        trainer.step(train_loader, test_loader)
     weights_after = vae.state_dict()
     assert_(not torch.isnan(tt(trainer.loss_history["training_loss"])).any())
     assert_(not assert_weights_equal(weights_before, weights_after))
@@ -58,13 +60,13 @@ def test_auxsvi_trainer(invariances):
     train_unsup = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
     train_sup = train_unsup + .1 * torch.randn_like(train_unsup)
     labels = dist.OneHotCategorical(torch.ones(data_dim[0], 3)).sample()
-    loader_unsup, loader_sup, _ = utils.init_ssvae_dataloaders(
+    loader_unsup, loader_sup, loader_val = utils.init_ssvae_dataloaders(
         train_unsup, (train_sup, labels), (train_sup, labels), batch_size=2)
     vae = models.ssiVAE(data_dim[1:], 2, 3, invariances)
     trainer = trainers.auxSVItrainer(vae)
     weights_before = dc(vae.state_dict())
     for _ in range(2):
-        trainer.step(loader_unsup, loader_sup)
+        trainer.step(loader_unsup, loader_sup, loader_val)
     weights_after = vae.state_dict()
     assert_(not torch.isnan(tt(trainer.history["training_loss"])).any())
     assert_(not assert_weights_equal(weights_before, weights_after))

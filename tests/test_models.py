@@ -520,7 +520,7 @@ def test_sstrvae_encode(invariances):
 def test_trvae_manifold2d(invariances, num_classes):
     data_dim = (8, 8)
     model = models.iVAE(data_dim, num_classes=num_classes, invariances=invariances)
-    decoded_grid = model.manifold2d(4, plot=False)
+    decoded_grid = model.manifold2d(4, plot=True)
     assert_equal(decoded_grid.squeeze().shape, (16, *data_dim))
 
 
@@ -529,7 +529,7 @@ def test_trvae_manifold2d(invariances, num_classes):
                           ((8,), (8,)), ((8, 8), (8, 8))])
 def test_ved_manifold2d(input_dim, output_dim):
     model = models.VED(input_dim, output_dim)
-    decoded_grid = model.manifold2d(4, plot=False)
+    decoded_grid = model.manifold2d(4, plot=True)
     assert_equal(decoded_grid.squeeze().shape, (16, *output_dim))
 
 
@@ -538,7 +538,7 @@ def test_ved_manifold2d(input_dim, output_dim):
 def test_jsstrvae_manifold2d(vae_model, invariances):
     data_dim = (8, 8)
     model = vae_model(data_dim, 2, 3, invariances=invariances)
-    decoded_grid = model.manifold2d(4, plot=False)
+    decoded_grid = model.manifold2d(4, plot=True)
     assert_equal(decoded_grid.squeeze().shape, (16, *data_dim))
 
 
