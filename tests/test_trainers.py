@@ -70,6 +70,25 @@ def test_auxsvi_trainer(invariances):
     assert_(not assert_weights_equal(weights_before, weights_after))
 
 
+@pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['t'], ['r', 't', 's']])
+def test_auxsvi_trainer_swa(invariances):
+    data_dim = (5, 8, 8)
+    train_unsup = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
+    train_sup = train_unsup + .1 * torch.randn_like(train_unsup)
+    labels = dist.OneHotCategorical(torch.ones(data_dim[0], 3)).sample()
+    loader_unsup, loader_sup, _ = utils.init_ssvae_dataloaders(
+        train_unsup, (train_sup, labels), (train_sup, labels), batch_size=2)
+    vae = models.ssiVAE(data_dim[1:], 2, 3, invariances)
+    trainer = trainers.auxSVItrainer(vae)
+    for _ in range(3):
+        trainer.step(loader_unsup, loader_sup)
+        trainer.save_running_weights("encoder_y")
+    weights_final = dc(vae.encoder_y.state_dict())
+    trainer.average_weights("encoder_y")
+    weights_aver = vae.encoder_y.state_dict()
+    assert_(not assert_weights_equal(weights_final, weights_aver))
+
+
 @pytest.mark.parametrize("input_dim, output_dim",
                          [((8,), (8, 8)), ((8, 8), (8,)),
                           ((8,), (8,)), ((8, 8), (8, 8))])

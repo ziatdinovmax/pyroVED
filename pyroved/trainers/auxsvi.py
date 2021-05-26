@@ -1,4 +1,7 @@
-from typing import Type, Optional, Union
+from typing import Type, Optional, Union, Dict
+
+from collections import OrderedDict
+from copy import deepcopy as dc
 
 import torch
 import torch.nn as nn
@@ -6,7 +9,7 @@ import pyro
 import pyro.infer as infer
 import pyro.optim as optim
 
-from ..utils import set_deterministic_mode
+from ..utils import set_deterministic_mode, average_weights
 
 
 class auxSVItrainer:
@@ -70,6 +73,7 @@ class auxSVItrainer:
 
         self.history = {"training_loss": [], "test_accuracy": []}
         self.current_epoch = 0
+        self.running_weights = {}
 
     def compute_loss(self,
                      xs: torch.Tensor,
@@ -156,6 +160,26 @@ class auxSVItrainer:
             eval_acc = self.evaluate(loader_val)
             self.history["test_accuracy"].append(eval_acc)
         self.current_epoch += 1
+
+    def save_running_weights(self, net: str) -> None:
+        """
+        Saves the running weights of specified neural net (e.g. "encoder_y")
+        Usually meant for a classifier neural network
+        """
+        net = getattr(self.model, net)
+        state_dict_ = OrderedDict()
+        for k, v in net.state_dict().items():
+            state_dict_[k] = dc(v).cpu()
+        self.running_weights[self.current_epoch] = state_dict_
+
+    def average_weights(self,
+                        net: str
+                        ) -> Dict[int, Dict[str, torch.Tensor]]:
+        """
+        Updates the selected neural net with an averaged weights
+        """
+        net = getattr(self.model, net)
+        net.load_state_dict(average_weights(self.running_weights))
 
     def print_statistics(self) -> None:
         """
