@@ -436,6 +436,16 @@ def test_ved_decode(input_dim, output_dim):
     assert_equal(decoded.squeeze().shape, output_dim)
 
 
+@pytest.mark.parametrize("input_dim, output_dim",
+                         [((8,), (8, 8)), ((8, 8), (8,)),
+                          ((8,), (8,)), ((8, 8), (8, 8))])
+def test_ved_predict(input_dim, output_dim):
+    x = torch.randn(2, 1, *input_dim)
+    model = models.VED(input_dim, output_dim)
+    prediction, _ = model.predict(x)
+    assert_equal(prediction.squeeze().shape, (2, *output_dim))
+
+
 @pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['r', 't', 's']])
 def test_ctrvae_decode(invariances):
     data_dim = (8, 8)
