@@ -50,19 +50,3 @@ def init_ssvae_dataloaders(data_unsup: torch.Tensor,
     loader_sup = init_dataloader(*data_sup, sampler=True, **kwargs)
     loader_val = init_dataloader(*data_val, **kwargs)
     return loader_unsup, loader_sup, loader_val
-
-
-def get_rotated_mnist(rotation_range: Tuple[int]) -> Tuple[torch.Tensor]:
-
-    mnist_trainset = datasets.MNIST(
-        root='./data', train=True, download=True, transform=None)
-    imstack_train_r = torch.zeros_like(mnist_trainset.data, dtype=torch.float32)
-    labels, angles = [], []
-    for i, (im, lbl) in enumerate(mnist_trainset):
-        theta = torch.randint(*rotation_range, (1,)).float()
-        im = im.rotate(theta.item(), resample=Image.BICUBIC)
-        imstack_train_r[i] = ToTensor()(im)
-        labels.append(lbl)
-        angles.append(torch.deg2rad(theta))
-    imstack_train_r /= imstack_train_r.max()
-    return imstack_train_r, tt(labels), tt(angles)
