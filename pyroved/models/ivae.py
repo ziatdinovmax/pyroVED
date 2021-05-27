@@ -2,7 +2,7 @@
 ivae.py
 =========
 
-Variational autoencoder with rotational and/or translational invariances
+Variational autoencoder with invariance to rotations, translations, and scale
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
@@ -25,7 +25,7 @@ from pyroved.utils import (
 class iVAE(baseVAE):
     """
     Variational autoencoder that enforces rotational, translational,
-    and scale invariances
+    and scale invariances.
 
     Args:
         data_dim:
