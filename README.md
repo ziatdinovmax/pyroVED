@@ -6,16 +6,17 @@
 [![Documentation Status](https://readthedocs.org/projects/pyroved/badge/?version=latest)](https://pyroved.readthedocs.io/en/latest/README.html)
 [![PyPI version](https://badge.fury.io/py/pyroved.svg)](https://badge.fury.io/py/pyroved)
 
-pyroVED is an open-source package built on top of the Pyro probabilistic programming language for applications of variational encoder-decoder models in spectral and image analyses. The currently available models include variational autoencoders with translational, rotational, and scale invariances for unsupervised, class-conditioned, and semi-supervised learning, as well as *im2spec*-type models for predicting spectra from images and vice versa.
+pyroVED is an open-source package built on top of the Pyro probabilistic programming framework for applications of variational encoder-decoder models in spectral and image analyses. The currently available models include variational autoencoders with translational, rotational, and scale invariances for unsupervised, class-conditioned, and semi-supervised learning, as well as *im2spec*-type models for predicting spectra from images and vice versa.
 More models to come!
 
 <p align="center">
   <img src="misc/mnist.png" width="95%" title="GPim">
 <p align="justify">
 
-If you found a bug in the code or would like a specific feature to be added, please create a report/request [here](https://github.com/ziatdinovmax/pyroVED/issues/new/choose).
+## Documentation and Examples
 
-## Examples
+The documentation of the package content can be found [here](https://pyroved.readthedocs.io/).
+  
 The easiest way to start using pyroVED is via [Google Colab](https://colab.research.google.com/notebooks/intro.ipynb), which is a free research tool from Google for machine learning education and research built on top of Jupyter Notebook. The following notebooks can be executed in Google Colab by simply clicking on the "Open in Colab" icon:
 
 *   Shift-VAE: Mastering the 1D shifts in spectral data [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ziatdinovmax/pyroVED/blob/master/examples/shiftVAE.ipynb)
@@ -32,7 +33,8 @@ The easiest way to start using pyroVED is via [Google Colab](https://colab.resea
 
 #### Requirements
 *   python >= 3.6
-*   pyro-ppl >= 1.6
+*   [pytorch](https://pytorch.org/) >= 1.8
+*   [pyro-ppl](https://pyro.ai/) >= 1.6
 
 Install pyroVED using pip:
 
@@ -48,6 +50,10 @@ To upgrade to the latest (unstable) version, run
 pip install --upgrade git+https://github.com/ziatdinovmax/pyroved.git
 ```
 
+## Reporting bugs
+If you found a bug in the code or would like a specific feature to be added, please create a report/request [here](https://github.com/ziatdinovmax/pyroVED/issues/new/choose).
+  
+  
 ## Development
 
 To run the unit tests, you'll need to have a pytest framework installed:
