@@ -3,8 +3,8 @@ jivae.py
 =========
 
 Variational autoencoder for learning (jointly) discrete and
-continuous latent representations on data with arbitrary rotations
-and/or translations
+continuous latent representations of data with arbitrary affine transformations
+(rotations, translations, and scale)
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
