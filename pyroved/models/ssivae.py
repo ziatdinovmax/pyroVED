@@ -3,7 +3,7 @@ ssivae.py
 =========
 
 Semi-supervised variational autoencoder for data
-with positional (rotation+translation) disorder
+with orientational, positional and scale disorders
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
@@ -25,7 +25,9 @@ from ..utils import (generate_grid, get_sampler, plot_img_grid,
 class ssiVAE(baseVAE):
     """
     Semi-supervised variational autoencoder with the enforcement
-    of rotational, translational, and scale invariances
+    of rotational, translational, and scale invariances. It allows performing
+    a classification of image/spectral data given a small number of examples
+    even in the presence of a distribution shift between the labeled and unlabeled parts.
 
     Args:
         data_dim:
