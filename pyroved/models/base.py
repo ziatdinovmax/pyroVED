@@ -95,8 +95,8 @@ class baseVAE(nn.Module):
 
     def _split_latent(self, z: torch.Tensor) -> Tuple[torch.Tensor]:
         """
-        Split latent variable into parts for rotation
-        and/or translation and image content
+        Split latent vector into parts associated with
+        coordinate transformations and image content
         """
         # For 1D, there is only a translation
         if self.ndim == 1:
