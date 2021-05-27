@@ -1,8 +1,8 @@
 pyroVED models
 ==============
 
-iVAE
------
+Invariant Variational Autoencoder (iVAE)
+----------------------------------------
 .. autoclass:: pyroved.models.iVAE
     :members:
     :inherited-members:
@@ -10,8 +10,8 @@ iVAE
     :member-order: bysource
     :show-inheritance:
 
-j-iVAE
--------
+Joint Invariant Variational Autoencoder (jiVAE)
+-----------------------------------------------
 .. autoclass:: pyroved.models.jiVAE
     :members:
     :inherited-members:
@@ -19,8 +19,8 @@ j-iVAE
     :member-order: bysource
     :show-inheritance:
 
-ss-iVAE
---------
+Semi-Supervised Invariant Variational Autoencoder (ssiVAE)
+----------------------------------------------------------
 .. autoclass:: pyroved.models.ssiVAE
     :members:
     :inherited-members:
@@ -28,8 +28,8 @@ ss-iVAE
     :member-order: bysource
     :show-inheritance:
 
-VED
----
+Variational Encoder-Decoder (VED)
+---------------------------------
 .. autoclass:: pyroved.models.VED
     :members:
     :inherited-members:
