@@ -21,6 +21,7 @@ Requirements
 ^^^^^^^^^^^^
 
 *   python >= 3.6
+*   pytorch >= 1.8
 *   pyro-ppl >= 1.6
 
 Install pyroVED using pip:
