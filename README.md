@@ -10,7 +10,7 @@ pyroVED is an open-source package built on top of the Pyro probabilistic program
 More models to come!
 
 <p align="center">
-  <img src="misc/mnist.png" width="95%" title="GPim">
+  <img src="misc/mnist.png" width="95%" title="pyroved_ivae">
 <p align="justify">
 
 ## Documentation and Examples
