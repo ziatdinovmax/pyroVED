@@ -40,9 +40,13 @@ class iVAE(baseVAE):
             invariances=None corresponds to vanilla VAE.
             For 1D systems, 't' enforces translational invariance and
             invariances=None is vanilla VAE
-        num_classes:
-            Number of classes (if any) for class-conditioned (t)(r)VAE (The
-            default is 0).
+        c_dim:
+            "Feature dimension" of the c vector in p(z|c) where z is
+            explicitly conditioned on variable c. The latter can be continuous
+            or discrete. For example, to train a class-conditional VAE on
+            a dataset with 10 classes, the cdim must be equal to 10, and
+            the corresponding n x 10 vector represents one hot encoded labels.
+            (The default cdim value is 0, i.e. no conditioning is performed).
         hidden_dim_e:
             Number of hidden units per each layer in encoder (inference
             network). (The default is 128).
@@ -89,12 +93,11 @@ class iVAE(baseVAE):
         >>> data_dim = (28, 28)
         >>> rvae = iVAE(data_dim, latent_dim=2, invariances=['r'])
 
-        Initialize a class-conditioned VAE model with rotational and
+        Initialize a class-conditional VAE model with rotational and
         translational invarainces for dataset that has 10 classes
 
         >>> data_dim = (28, 28)
-        >>> rvae = iVAE(data_dim, latent_dim=2,
-        >>>              num_classes=10, invariances=['r', 't'])
+        >>> rvae = iVAE(data_dim, latent_dim=2, c_dim=10, invariances=['r', 't'])
     """
 
     def __init__(
@@ -102,7 +105,7 @@ class iVAE(baseVAE):
         data_dim: Tuple[int],
         latent_dim: int = 2,
         invariances: List[str] = None,
-        num_classes: int = 0,
+        c_dim: int = 0,
         hidden_dim_e: int = 128,
         hidden_dim_d: int = 128,
         num_layers_e: int = 2,
@@ -129,7 +132,7 @@ class iVAE(baseVAE):
         # Initialize the decoder network
         dnet = sDecoderNet if 0 < self.coord < 5 else fcDecoderNet
         self.decoder = dnet(
-            data_dim, latent_dim, num_classes, hidden_dim_d, num_layers_d,
+            data_dim, latent_dim, c_dim, hidden_dim_d, num_layers_d,
             activation, sigmoid_out=sigmoid_d
         )
         # Initialize the decoder's sampler
@@ -137,7 +140,7 @@ class iVAE(baseVAE):
 
         # Sets continuous and discrete dimensions
         self.z_dim = latent_dim + self.coord
-        self.num_classes = num_classes
+        self.c_dim = c_dim
 
         # Move model parameters to appropriate device
         self.to(self.device)
@@ -231,7 +234,7 @@ class iVAE(baseVAE):
 
         Args:
             z: Latent coordinates (without rotational and translational parts)
-            y: Class (if any) as a batch of one-hot vectors
+            y: Conditional "property" vector (e.g. one-hot encoded class vector)
             kwargs: Batch size as 'batch_size'
         """
         z = z.to(self.device)
@@ -240,7 +243,9 @@ class iVAE(baseVAE):
         loc = self._decode(z, **kwargs)
         return loc
 
-    def manifold2d(self, d: int, plot: bool = True,
+    def manifold2d(self, d: int,
+                   y: torch.Tensor = None,
+                   plot: bool = True,
                    **kwargs: Union[str, int, float]) -> torch.Tensor:
         """
         Plots a learned latent manifold in the image space
@@ -248,19 +253,20 @@ class iVAE(baseVAE):
         Args:
             d: Grid size
             plot: Plots the generated manifold (Default: True)
-            kwargs: Keyword arguments include 'label' for class label (if any),
-                    custom min/max values for grid boundaries passed as 'z_coord'
-                    (e.g. z_coord = [-3, 3, -3, 3]), 'angle' and 'shift' to condition
-                    a generative model on, and plot parameters
+            y: Conditional "property" vector (e.g. one-hot encoded class vector)
+            kwargs: Keyword arguments include custom min/max values
+                    for grid boundaries passed as 'z_coord'
+                    (e.g. z_coord = [-3, 3, -3, 3]), 'angle' and
+                    'shift' to condition a generative model on, and plot parameters
                     ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
         """
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
         z = [z]
-        if self.num_classes > 0:
-            cls = torch.tensor(kwargs.get("label", 0))
-            if cls.ndim < 2:
-                cls = to_onehot(cls.unsqueeze(0), self.num_classes)
-            z = z + [cls.repeat(z[0].shape[0], 1)]
+        if self.c_dim > 0:
+            if y is None:
+                raise ValueError("To generate a manifold pass a conditional vector y") 
+            y = y.unsqueeze(1) if 0 < y.ndim < 2 else y
+            z = z + [y.expand(z[0].shape[0], *y.shape[1:])]
         loc = self.decode(*z, **kwargs)
         if plot:
             if self.ndim == 2:
