@@ -305,6 +305,74 @@ def test_sstrvae_disc_sites_fn(invariances):
     assert_(isinstance(guide_trace.nodes["y"]['fn'], dist.OneHotCategorical))
 
 
+
+@pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['r', 't', 's'], ['s', 'r', 't']])
+def test_ssregvae_cont_sites_dims(invariances):
+    data_dim = (3, 8, 8)
+    x = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
+    coord = 0
+    if invariances is not None:
+        coord = len(invariances)
+        if 't' in invariances and len(data_dim[1:]) == 2:
+            coord = coord + 1
+    model = models.ss_reg_iVAE(data_dim[1:], 2, 3, invariances=invariances)
+    guide_trace, model_trace = get_traces(model, x)
+    assert_equal(model_trace.nodes["z"]['value'].shape,
+                 (data_dim[0], coord+2))
+    assert_equal(guide_trace.nodes["z"]['value'].shape,
+                 (data_dim[0], coord+2))
+    assert_equal(model_trace.nodes["x"]['value'].shape,
+                 (data_dim[0], torch.prod(tt(data_dim[1:])).item()))
+
+
+@pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['r', 't', 's'], ['s', 'r', 't']])
+def test_ssregvae_disc_sites_dims(invariances):
+    data_dim = (3, 8, 8)
+    x = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
+    coord = 0
+    if invariances is not None:
+        coord = len(invariances)
+        if 't' in invariances and len(data_dim[1:]) == 2:
+            coord = coord + 1
+    model = models.ss_reg_iVAE(data_dim[1:], 2, 3, invariances=invariances)
+    guide_trace, model_trace = get_traces(model, x)
+    assert_equal(model_trace.nodes["y"]['value'].shape,
+                 (data_dim[0], 3))
+    assert_equal(guide_trace.nodes["y"]['value'].shape,
+                 (data_dim[0], 3))
+
+
+@pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['r', 't', 's'], ['s', 'r', 't']])
+def test_ssregvae_vae_sites_fn(invariances):
+    data_dim = (3, 8, 8)
+    x = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
+    coord = 0
+    if invariances is not None:
+        coord = len(invariances)
+        if 't' in invariances and len(data_dim[1:]) == 2:
+            coord = coord + 1
+    model = models.ss_reg_iVAE(data_dim[1:], 2, 3, invariances=invariances)
+    guide_trace, model_trace = get_traces(model, x)
+    assert_(isinstance(model_trace.nodes["z"]['fn'].base_dist, dist.Normal))
+    assert_(isinstance(guide_trace.nodes["z"]['fn'].base_dist, dist.Normal))
+    assert_(isinstance(model_trace.nodes["x"]['fn'].base_dist, dist.Bernoulli))
+
+
+@pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['r', 't', 's'], ['s', 'r', 't']])
+def test_ssregvae_reg_sites_fn(invariances):
+    data_dim = (3, 8, 8)
+    x = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
+    coord = 0
+    if invariances is not None:
+        coord = len(invariances)
+        if 't' in invariances and len(data_dim[1:]) == 2:
+            coord = coord + 1
+    model = models.ss_reg_iVAE(data_dim[1:], 2, 3, invariances=invariances)
+    guide_trace, model_trace = get_traces(model, x)
+    assert_(isinstance(model_trace.nodes["y"]['fn'].base_dist, dist.Normal))
+    assert_(isinstance(guide_trace.nodes["y"]['fn'].base_dist, dist.Normal))
+
+
 @pytest.mark.parametrize(
     "sampler, expected_dist",
     [("gaussian", dist.Normal), ("bernoulli", dist.Bernoulli),
