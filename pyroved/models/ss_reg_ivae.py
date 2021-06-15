@@ -330,7 +330,7 @@ class ss_reg_iVAE(baseVAE):
         """
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
         y = y.unsqueeze(1) if 0 < y.ndim < 2 else y
-        y = y.expand(z[0].shape[0], *y.shape[1:])
+        y = y.expand(z.shape[0], *y.shape[1:])
         loc = self.decode(z, y, **kwargs)
         if plot:
             if self.ndim == 2:
