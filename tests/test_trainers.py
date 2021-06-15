@@ -42,7 +42,7 @@ def test_svi_trainer_trvae(invariances):
 
 @pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['t'], ['r', 't', 's']])
 def test_svi_trainer_jtrvae(invariances):
-    data_dim = (5, 8, 8)
+    data_dim = (6, 8, 8)
     train_data = torch.randn(*data_dim)
     train_loader = utils.init_dataloader(train_data, batch_size=2)
     vae = models.jiVAE(data_dim[1:], 2, 3, invariances)
