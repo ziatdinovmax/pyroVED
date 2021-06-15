@@ -10,10 +10,11 @@ from typing import List, Tuple, Type, Union
 
 import torch
 import torch.nn as nn
-import torch.tensor as tt
 from pyro.distributions.util import broadcast_shape
 
 from ..utils import get_activation
+
+tt = torch.tensor
 
 
 class Concat(nn.Module):
@@ -49,7 +50,7 @@ class fcEncoderNet(nn.Module):
     def __init__(self,
                  in_dim: Tuple[int],
                  latent_dim: int = 2,
-                 num_classes: int = 0,
+                 c_dim: int = 0,
                  hidden_dim: int = 128,
                  num_layers: int = 2,
                  activation: str = 'tanh',
@@ -62,7 +63,7 @@ class fcEncoderNet(nn.Module):
         super(fcEncoderNet, self).__init__()
         if len(in_dim) not in [1, 2, 3]:
             raise ValueError("in_dim must be (h, w), (h, w, c), or (l,)")
-        self.in_dim = torch.prod(tt(in_dim)).item() + num_classes
+        self.in_dim = torch.prod(tt(in_dim)).item() + c_dim
         self.flat = flat
 
         self.concat = Concat()
@@ -138,7 +139,7 @@ class fcDecoderNet(nn.Module):
     def __init__(self,
                  out_dim: Tuple[int],
                  latent_dim: int,
-                 num_classes: int = 0,
+                 c_dim: int = 0,
                  hidden_dim: int = 128,
                  num_layers: int = 2,
                  activation: str = 'tanh',
@@ -158,7 +159,7 @@ class fcDecoderNet(nn.Module):
 
         self.concat = Concat()
         self.fc_layers = make_fc_layers(
-            latent_dim+num_classes, hidden_dim, num_layers, activation)
+            latent_dim+c_dim, hidden_dim, num_layers, activation)
         self.out = nn.Linear(hidden_dim, out_dim)
         self.activation_out = nn.Sigmoid() if sigmoid_out else lambda x: x
 
@@ -181,7 +182,7 @@ class sDecoderNet(nn.Module):
     def __init__(self,
                  out_dim: Tuple[int],
                  latent_dim: int,
-                 num_classes: int = 0,
+                 c_dim: int = 0,
                  hidden_dim: int = 128,
                  num_layers: int = 2,
                  activation: str = 'tanh',
@@ -201,7 +202,7 @@ class sDecoderNet(nn.Module):
 
         self.concat = Concat()
         self.coord_latent = coord_latent(
-            latent_dim+num_classes, hidden_dim, coord_dim)
+            latent_dim+c_dim, hidden_dim, coord_dim)
         self.fc_layers = make_fc_layers(
             hidden_dim, hidden_dim, num_layers, activation)
         self.out = nn.Linear(hidden_dim, 1)  # need to generalize to multi-channel (c > 1)

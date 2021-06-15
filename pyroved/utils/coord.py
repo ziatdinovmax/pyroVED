@@ -1,7 +1,7 @@
 from typing import Union, Tuple
 import torch
-import torch.tensor as tt
 import pyro.distributions as dist
+tt = torch.tensor
 
 
 def grid2xy(X1: torch.Tensor, X2: torch.Tensor) -> torch.Tensor:

@@ -13,7 +13,6 @@ from typing import Tuple, Union, List
 import pyro
 import pyro.distributions as dist
 import torch
-import torch.tensor as tt
 
 from ..nets import fcDecoderNet, jfcEncoderNet, sDecoderNet
 from ..utils import (generate_grid, generate_latent_grid,
@@ -21,6 +20,8 @@ from ..utils import (generate_grid, generate_latent_grid,
                      plot_grid_traversal, plot_img_grid, plot_spect_grid,
                      set_deterministic_mode, to_onehot, transform_coordinates)
 from .base import baseVAE
+
+tt = torch.tensor
 
 
 class jiVAE(baseVAE):

@@ -2,7 +2,6 @@ import sys
 from copy import deepcopy as dc
 
 import torch
-import torch.tensor as tt
 import pyro
 import pyro.poutine as poutine
 import pyro.distributions as dist
@@ -15,6 +14,8 @@ from numpy import array_equal
 sys.path.append("../../")
 
 from pyroved import models, nets, utils
+
+tt = torch.tensor
 
 
 def get_traces(model, *args):
@@ -449,7 +450,7 @@ def test_ved_predict(input_dim, output_dim):
 @pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['r', 't', 's']])
 def test_ctrvae_decode(invariances):
     data_dim = (8, 8)
-    model = models.iVAE(data_dim, num_classes=3, invariances=invariances)
+    model = models.iVAE(data_dim, c_dim=3, invariances=invariances)
     z_coord = torch.tensor([0.0, 0.0]).unsqueeze(0)
     y = utils.to_onehot(torch.tensor(0).unsqueeze(0), 3)
     decoded = model.decode(z_coord, y)
@@ -529,8 +530,11 @@ def test_sstrvae_encode(invariances):
 @pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['t'], ['r', 't', 's']])
 def test_trvae_manifold2d(invariances, num_classes):
     data_dim = (8, 8)
-    model = models.iVAE(data_dim, num_classes=num_classes, invariances=invariances)
-    decoded_grid = model.manifold2d(4, plot=True)
+    model = models.iVAE(data_dim, c_dim=num_classes, invariances=invariances)
+    y = None
+    if num_classes > 0:
+        y = utils.to_onehot(torch.tensor(0).unsqueeze(0), num_classes)
+    decoded_grid = model.manifold2d(4, y, plot=True)
     assert_equal(decoded_grid.squeeze().shape, (16, *data_dim))
 
 
