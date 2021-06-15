@@ -1,6 +1,6 @@
 """
 ivae.py
-=========
+=======
 
 Variational autoencoder with invariance to rotations, translations, and scale
 
@@ -44,9 +44,9 @@ class iVAE(baseVAE):
             "Feature dimension" of the c vector in p(z|c) where z is
             explicitly conditioned on variable c. The latter can be continuous
             or discrete. For example, to train a class-conditional VAE on
-            a dataset with 10 classes, the cdim must be equal to 10, and
-            the corresponding n x 10 vector represents one hot encoded labels.
-            (The default cdim value is 0, i.e. no conditioning is performed).
+            a dataset with 10 classes, the c_dim must be equal to 10 and
+            the corresponding n x 10 vector should represent one-hot encoded labels.
+            (The default c_dim value is 0, i.e. no conditioning is performed).
         hidden_dim_e:
             Number of hidden units per each layer in encoder (inference
             network). (The default is 128).
@@ -215,7 +215,7 @@ class iVAE(baseVAE):
 
         Args:
             x_new:
-                Data to encode with a trained trVAE. The new data must have
+                Data to encode with a trained (i)VAE model. The new data must have
                 the same dimensions (images height and width or spectra length)
                 as the one used for training.
             kwargs:
