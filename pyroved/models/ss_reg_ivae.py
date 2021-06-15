@@ -8,19 +8,17 @@ invariances
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
-from typing import Optional, Tuple, Union, Type, List
+from typing import List, Optional, Tuple, Type, Union
 
 import pyro
 import pyro.distributions as dist
 import torch
-import torch.tensor as tt
 
+from ..nets import fcDecoderNet, fcEncoderNet, fcRegressorNet, sDecoderNet
+from ..utils import (generate_latent_grid, get_sampler, init_dataloader,
+                     plot_img_grid, plot_spect_grid, set_deterministic_mode,
+                     transform_coordinates)
 from .base import baseVAE
-from ..nets import fcDecoderNet, fcEncoderNet, sDecoderNet, fcRegressorNet
-from ..utils import (generate_grid, get_sampler, plot_img_grid,
-                     plot_spect_grid, set_deterministic_mode, to_onehot,
-                     transform_coordinates, init_dataloader, generate_latent_grid,
-                     generate_latent_grid_traversal, plot_grid_traversal)
 
 
 class ss_reg_iVAE(baseVAE):

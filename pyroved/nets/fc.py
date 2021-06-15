@@ -10,10 +10,11 @@ from typing import List, Tuple, Type, Union
 
 import torch
 import torch.nn as nn
-import torch.tensor as tt
 from pyro.distributions.util import broadcast_shape
 
 from ..utils import get_activation
+
+tt = torch.tensor
 
 
 class Concat(nn.Module):
