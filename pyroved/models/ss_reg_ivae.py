@@ -244,7 +244,7 @@ class ss_reg_iVAE(baseVAE):
         """
         pass
 
-    def set_classifier(self, reg_net: Type[torch.nn.Module]) -> None:
+    def set_regressor(self, reg_net: Type[torch.nn.Module]) -> None:
         """
         Sets a user-defined regression network
         """
