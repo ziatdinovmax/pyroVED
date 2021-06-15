@@ -12,7 +12,6 @@ from typing import Optional, Tuple, Union, Type, List
 import pyro
 import pyro.distributions as dist
 import torch
-import torch.tensor as tt
 
 from .base import baseVAE
 from ..nets import fcDecoderNet, fcEncoderNet, sDecoderNet, fcClassifierNet
@@ -20,6 +19,8 @@ from ..utils import (generate_grid, get_sampler, plot_img_grid,
                      plot_spect_grid, set_deterministic_mode, to_onehot,
                      transform_coordinates, init_dataloader, generate_latent_grid,
                      generate_latent_grid_traversal, plot_grid_traversal)
+
+tt = torch.tensor
 
 
 class ssiVAE(baseVAE):

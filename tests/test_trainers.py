@@ -2,7 +2,6 @@ import sys
 from copy import deepcopy as dc
 
 import torch
-import torch.tensor as tt
 import pyro.distributions as dist
 import pytest
 import numpy as np
@@ -11,6 +10,8 @@ from numpy.testing import assert_
 sys.path.append("../../")
 
 from pyroved import models, utils, trainers
+
+tt = torch.tensor
 
 
 def assert_weights_equal(m1, m2):

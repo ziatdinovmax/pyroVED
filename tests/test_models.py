@@ -2,7 +2,6 @@ import sys
 from copy import deepcopy as dc
 
 import torch
-import torch.tensor as tt
 import pyro
 import pyro.poutine as poutine
 import pyro.distributions as dist
@@ -15,6 +14,8 @@ from numpy import array_equal
 sys.path.append("../../")
 
 from pyroved import models, nets, utils
+
+tt = torch.tensor
 
 
 def get_traces(model, *args):

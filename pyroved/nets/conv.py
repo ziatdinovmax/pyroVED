@@ -11,13 +11,14 @@ from typing import Union, Tuple, List
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.tensor as tt
 
 from ..utils import get_activation, get_bnorm, get_conv, get_maxpool
 
 from warnings import warn, filterwarnings
 
 filterwarnings("ignore", module="torch.nn.functional")
+
+tt = torch.tensor
 
 
 class convEncoderNet(nn.Module):

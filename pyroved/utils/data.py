@@ -1,10 +1,6 @@
 from typing import Tuple, Type
 
 import torch
-import torch.tensor as tt
-from PIL import Image
-from torchvision import datasets
-from torchvision.transforms import ToTensor
 
 
 def init_dataloader(*args: torch.Tensor,

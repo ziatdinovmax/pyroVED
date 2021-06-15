@@ -12,9 +12,10 @@ from abc import abstractmethod
 
 import torch
 import torch.nn as nn
-import torch.tensor as tt
 
 from ..utils import init_dataloader, transform_coordinates, generate_grid
+
+tt = torch.tensor
 
 
 class baseVAE(nn.Module):
