@@ -77,7 +77,7 @@ class VED(baseVAE):
             Additional keyword argument is *decoder_sig* for setting sigma
             in the decoder's sampler when it is chosen to be a "gaussian".
 
-    Example:
+    Examples:
 
     Initialize a VED model for predicting 1D spectra from 2D images
 

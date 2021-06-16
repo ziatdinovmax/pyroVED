@@ -32,7 +32,7 @@ class auxSVItrainer:
             Sets device to which model and data will be moved.
             Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
 
-    Example:
+    Examples:
 
     >>> # Initialize model for semi supervised learning
     >>> data_dim = (28, 28)

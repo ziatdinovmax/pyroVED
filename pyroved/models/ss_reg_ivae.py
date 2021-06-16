@@ -1,6 +1,6 @@
 """
-ss_regivae.py
-=============
+ss_reg_ivae.py
+==============
 
 Variational autoencoder for semi-supervised regression
 with an option to enforce orientational, positional and scale
@@ -33,7 +33,8 @@ class ss_reg_iVAE(baseVAE):
         latent_dim:
             Number of latent dimensions.
         reg_dim:
-            Number of output dimensions in regression
+            Number of output dimensions in regression. For example,
+            for a single output regressor, specify reg_dim=1.
         invariances:
             List with invariances to enforce. For 2D systems, `r` enforces
             rotational invariance, `t` enforces invariance to
@@ -83,13 +84,13 @@ class ss_reg_iVAE(baseVAE):
         regressor_sig:
             Sets sigma for a regression sampler
 
-    Example:
+    Examples:
 
     Initialize a VAE model with rotational invariance for
-    semi-supervised learning of the dataset that has 10 classes
+    a semi-supervised single-output regression.
 
     >>> data_dim = (28, 28)
-    >>> ssvae = ssiVAE(data_dim, latent_dim=2, num_classes=10, invariances=['r'])
+    >>> ssvae = ss_reg_iVAE(data_dim, latent_dim=2, reg_dim=1, invariances=['r'])
     """
     def __init__(self,
                  data_dim: Tuple[int],

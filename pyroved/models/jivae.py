@@ -81,7 +81,7 @@ class jiVAE(baseVAE):
         decoder_sig:
             Sets sigma for a "gaussian" decoder sampler
 
-    Example:
+    Examples:
 
     Initialize a joint VAE model with rotational invariance for 10 discrete classes
 

@@ -85,7 +85,7 @@ class ssiVAE(baseVAE):
         decoder_sig:
             Sets sigma for a "gaussian" decoder sampler
 
-    Example:
+    Examples:
 
     Initialize a VAE model with rotational invariance for
     semi-supervised learning of the dataset that has 10 classes
