@@ -32,7 +32,7 @@ class auxSVItrainer:
             Sets device to which model and data will be moved.
             Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
 
-    Example:
+    Examples:
 
     >>> # Initialize model for semi supervised learning
     >>> data_dim = (28, 28)
@@ -47,6 +47,7 @@ class auxSVItrainer:
 
     def __init__(self,
                  model: Type[nn.Module],
+                 task: str = "classification",
                  optimizer: Type[optim.PyroOptim] = None,
                  seed: int = 1,
                  **kwargs: Union[str, float]
@@ -56,22 +57,31 @@ class auxSVItrainer:
         """
         pyro.clear_param_store()
         set_deterministic_mode(seed)
+        if task not in ["classification", "regression"]:
+            raise ValueError("Choose between 'classification' and 'regression' tasks")
+        self.task = task
         self.device = kwargs.get(
             "device", 'cuda' if torch.cuda.is_available() else 'cpu')
         if optimizer is None:
             lr = kwargs.get("lr", 5e-4)
             optimizer = optim.Adam({"lr": lr})
-        guide = infer.config_enumerate(model.guide, "parallel", expand=True)
-        loss = pyro.infer.TraceEnum_ELBO
+        if self.task == "classification":
+            guide = infer.config_enumerate(
+                model.guide, "parallel", expand=True)
+            loss = pyro.infer.TraceEnum_ELBO(
+                max_plate_nesting=1, strict_enumeration_warning=False)
+        else:
+            guide = model.guide
+            loss = pyro.infer.Trace_ELBO()
+        
         self.loss_basic = infer.SVI(
-            model.model, guide, optimizer,
-            loss=(loss)(max_plate_nesting=1, strict_enumeration_warning=False))
+            model.model, guide, optimizer, loss=loss)
         self.loss_aux = infer.SVI(
-            model.model_classify, model.guide_classify,
+            model.model_aux, model.guide_aux,
             optimizer, loss=pyro.infer.Trace_ELBO())
         self.model = model
 
-        self.history = {"training_loss": [], "test_accuracy": []}
+        self.history = {"training_loss": [], "test": []}
         self.current_epoch = 0
         self.running_weights = {}
 
@@ -118,10 +128,16 @@ class auxSVItrainer:
         return epoch_loss / unsup_count
 
     def evaluate(self,
-                 loader_val: Optional[torch.utils.data.DataLoader]) -> None:
+                 loader_val: Optional[torch.utils.data.DataLoader]) -> float:
         """
         Evaluates model's current state on labeled test data
         """
+        if self.task == "classification":
+            return self.evaluate_cls(loader_val)
+        return self.evaluate_reg(loader_val)
+
+    def evaluate_cls(self,
+                     loader_val: Optional[torch.utils.data.DataLoader]) -> float:
         correct, total = 0, 0
         with torch.no_grad():
             for data, labels in loader_val:
@@ -130,6 +146,16 @@ class auxSVItrainer:
                 correct += (predicted == lab_idx).sum().item()
                 total += data.size(0)
         return correct / total
+
+    def evaluate_reg(self,
+                     loader_val: Optional[torch.utils.data.DataLoader]) -> float:
+        correct = 0
+        with torch.no_grad():
+            for data, gt in loader_val:
+                predicted = self.model.regressor(data)
+                mse = nn.functional.mse_loss(predicted, gt)
+                correct += mse
+        return correct
 
     def step(self,
              loader_unsup: torch.utils.data.DataLoader,
@@ -158,7 +184,7 @@ class auxSVItrainer:
         self.history["training_loss"].append(train_loss)
         if loader_val is not None:
             eval_acc = self.evaluate(loader_val)
-            self.history["test_accuracy"].append(eval_acc)
+            self.history["test"].append(eval_acc)
         self.current_epoch += 1
 
     def save_running_weights(self, net: str) -> None:
@@ -186,10 +212,13 @@ class auxSVItrainer:
         Print training and test (if any) losses for current epoch
         """
         e = self.current_epoch
-        if len(self.history["test_accuracy"]) > 0:
-            template = 'Epoch: {} Training loss: {:.4f}, Test accuracy: {:.4f}'
+        if len(self.history["test"]) > 0:
+            if self.task == "classification":
+                template = 'Epoch: {} Training loss: {:.4f}, Test accuracy: {:.4f}'
+            else:
+                template = 'Epoch: {} Training loss: {:.4f}, Test MSE: {:.4f}'
             print(template.format(e, self.history["training_loss"][-1],
-                                  self.history["test_accuracy"][-1]))
+                                  self.history["test"][-1]))
         else:
             template = 'Epoch: {} Training loss: {:.4f}'
             print(template.format(e, self.history["training_loss"][-1]))

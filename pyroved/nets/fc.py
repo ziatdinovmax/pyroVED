@@ -288,6 +288,37 @@ class fcClassifierNet(nn.Module):
         return torch.softmax(x, dim=-1)
 
 
+class fcRegressorNet(nn.Module):
+    """
+    Simple classification neural network with fully-connected layers only.
+    """
+    def __init__(self,
+                 in_dim: Tuple[int],
+                 c_dim: int,
+                 hidden_dim: int = 128,
+                 num_layers: int = 2,
+                 activation: str = 'tanh'
+                 ) -> None:
+        """
+        Initializes module
+        """
+        super(fcRegressorNet, self).__init__()
+        if len(in_dim) not in [1, 2, 3]:
+            raise ValueError("in_dim must be (h, w), (h, w, c), or (l,)")
+        self.in_dim = torch.prod(tt(in_dim)).item()
+
+        self.fc_layers = make_fc_layers(
+            self.in_dim, hidden_dim, num_layers, activation)
+        self.out = nn.Linear(hidden_dim, c_dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass
+        """
+        x = self.fc_layers(x)
+        return self.out(x)
+
+
 def make_fc_layers(in_dim: int,
                    hidden_dim: int = 128,
                    num_layers: int = 2,

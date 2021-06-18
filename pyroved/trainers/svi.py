@@ -33,7 +33,7 @@ class SVItrainer:
             Sets device to which model and data will be moved.
             Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
 
-    Example:
+    Examples:
 
     Train a model with SVI trainer using default settings
 
@@ -148,7 +148,9 @@ class SVItrainer:
                 Pytorch’s dataloader object with training data
             test_loader:
                 (Optional) Pytorch’s dataloader object with test data
-            **scale_factor:
+        
+        Keyword Args:
+            scale_factor:
                 Scale factor for KL divergence. See e.g. https://arxiv.org/abs/1804.03599
                 Default value is 1 (i.e. no scaling)
         """

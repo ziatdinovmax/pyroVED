@@ -56,7 +56,7 @@ def test_svi_trainer_jtrvae(invariances):
 
 
 @pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['t'], ['r', 't', 's']])
-def test_auxsvi_trainer(invariances):
+def test_auxsvi_trainer_cls(invariances):
     data_dim = (5, 8, 8)
     train_unsup = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
     train_sup = train_unsup + .1 * torch.randn_like(train_unsup)
@@ -65,6 +65,26 @@ def test_auxsvi_trainer(invariances):
         train_unsup, (train_sup, labels), (train_sup, labels), batch_size=2)
     vae = models.ssiVAE(data_dim[1:], 2, 3, invariances)
     trainer = trainers.auxSVItrainer(vae)
+    weights_before = dc(vae.state_dict())
+    for _ in range(2):
+        trainer.step(loader_unsup, loader_sup, loader_val)
+    weights_after = vae.state_dict()
+    assert_(not torch.isnan(tt(trainer.history["training_loss"])).any())
+    assert_(not assert_weights_equal(weights_before, weights_after))
+
+
+@pytest.mark.parametrize("c_dim", [1, 2])
+@pytest.mark.parametrize("invariances", [None, ['r'], ['s'], ['t'], ['r', 't', 's']])
+def test_auxsvi_trainer_reg(c_dim, invariances):
+    data_dim = (5, 8, 8)
+    train_unsup = torch.randn(data_dim[0], torch.prod(tt(data_dim[1:])).item())
+    train_sup = train_unsup + .1 * torch.randn_like(train_unsup)
+    gt = torch.randn(data_dim[0], c_dim)
+
+    loader_unsup, loader_sup, loader_val = utils.init_ssvae_dataloaders(
+        train_unsup, (train_sup, gt), (train_sup, gt), batch_size=2)
+    vae = models.ss_reg_iVAE(data_dim[1:], 2, c_dim, invariances)
+    trainer = trainers.auxSVItrainer(vae, task="regression")
     weights_before = dc(vae.state_dict())
     for _ in range(2):
         trainer.step(loader_unsup, loader_sup, loader_val)

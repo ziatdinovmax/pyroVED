@@ -1,34 +1,30 @@
 """
-ssivae.py
-=========
+ss_reg_ivae.py
+==============
 
-Semi-supervised variational autoencoder for data
-with orientational, positional and scale disorders
+Variational autoencoder for semi-supervised regression
+with an option to enforce orientational, positional and scale
+invariances
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
-from typing import Optional, Tuple, Union, Type, List
+from typing import List, Optional, Tuple, Type, Union
 
 import pyro
 import pyro.distributions as dist
 import torch
 
+from ..nets import fcDecoderNet, fcEncoderNet, fcRegressorNet, sDecoderNet
+from ..utils import (generate_latent_grid, get_sampler, init_dataloader,
+                     plot_img_grid, plot_spect_grid, set_deterministic_mode,
+                     transform_coordinates)
 from .base import baseVAE
-from ..nets import fcDecoderNet, fcEncoderNet, sDecoderNet, fcClassifierNet
-from ..utils import (generate_grid, get_sampler, plot_img_grid,
-                     plot_spect_grid, set_deterministic_mode, to_onehot,
-                     transform_coordinates, init_dataloader, generate_latent_grid,
-                     generate_latent_grid_traversal, plot_grid_traversal)
-
-tt = torch.tensor
 
 
-class ssiVAE(baseVAE):
+class ss_reg_iVAE(baseVAE):
     """
-    Semi-supervised variational autoencoder with the enforcement
-    of rotational, translational, and scale invariances. It allows performing
-    a classification of image/spectral data given a small number of examples
-    even in the presence of a distribution shift between the labeled and unlabeled parts.
+    Semi-supervised variational autoencoder for regression tasks
+    with the enforcement of rotational, translational, and scale invariances.
 
     Args:
         data_dim:
@@ -36,8 +32,9 @@ class ssiVAE(baseVAE):
             or (length,) for spectra.
         latent_dim:
             Number of latent dimensions.
-        num_classes:
-            Number of classes in the classification scheme
+        reg_dim:
+            Number of output dimensions in regression. For example,
+            for a single output regressor, specify reg_dim=1.
         invariances:
             List with invariances to enforce. For 2D systems, `r` enforces
             rotational invariance, `t` enforces invariance to
@@ -84,19 +81,21 @@ class ssiVAE(baseVAE):
             Scale prior (usually, sc_prior << 1)
         decoder_sig:
             Sets sigma for a "gaussian" decoder sampler
+        regressor_sig:
+            Sets sigma for a regression sampler
 
     Examples:
 
     Initialize a VAE model with rotational invariance for
-    semi-supervised learning of the dataset that has 10 classes
+    a semi-supervised single-output regression.
 
     >>> data_dim = (28, 28)
-    >>> ssvae = ssiVAE(data_dim, latent_dim=2, num_classes=10, invariances=['r'])
+    >>> ssvae = ss_reg_iVAE(data_dim, latent_dim=2, reg_dim=1, invariances=['r'])
     """
     def __init__(self,
                  data_dim: Tuple[int],
                  latent_dim: int,
-                 num_classes: int,
+                 reg_dim: int,
                  invariances: List[str] = None,
                  hidden_dim_e: int = 128,
                  hidden_dim_d: int = 128,
@@ -114,7 +113,7 @@ class ssiVAE(baseVAE):
         Initializes sstrVAE parameters
         """
         args = (data_dim, invariances)
-        super(ssiVAE, self).__init__(*args, **kwargs)
+        super(ss_reg_iVAE, self).__init__(*args, **kwargs)
         pyro.clear_param_store()
         set_deterministic_mode(seed)
 
@@ -122,25 +121,28 @@ class ssiVAE(baseVAE):
 
         # Initialize z-Encoder neural network
         self.encoder_z = fcEncoderNet(
-            data_dim, latent_dim+self.coord, num_classes,
+            data_dim, latent_dim+self.coord, reg_dim,
             hidden_dim_e, num_layers_e, activation, flat=False)
 
         # Initialize y-Encoder neural network
-        self.encoder_y = fcClassifierNet(
-            data_dim, num_classes, hidden_dim_cls, num_layers_cls,
+        self.encoder_y = fcRegressorNet(
+            data_dim, reg_dim, hidden_dim_cls, num_layers_cls,
             activation)
 
         # Initializes Decoder neural network
         dnet = sDecoderNet if 0 < self.coord < 5 else fcDecoderNet
         self.decoder = dnet(
-            data_dim, latent_dim, num_classes, hidden_dim_d,
+            data_dim, latent_dim, reg_dim, hidden_dim_d,
             num_layers_d, activation, sigmoid_out=sigmoid_d,
             unflat=False)
         self.sampler_d = get_sampler(sampler_d, **kwargs)
 
+        # Set sigma for regression sampler
+        self.reg_sig = kwargs.get("regressor_sig", 0.5)
+
         # Sets continuous and discrete dimensions
         self.z_dim = latent_dim + self.coord
-        self.num_classes = num_classes
+        self.reg_dim = reg_dim
 
         # Send model parameters to their appropriate devices.
         self.to(self.device)
@@ -180,9 +182,9 @@ class ssiVAE(baseVAE):
                 grid = self.grid.expand(expdim, *self.grid.shape)
                 x_coord_prime = transform_coordinates(grid, phi, dx, sc)
             # sample label from the constant prior or observe the value
-            alpha_prior = (torch.ones(batch_dim, self.num_classes, **specs) /
-                           self.num_classes)
-            ys = pyro.sample("y", dist.OneHotCategorical(alpha_prior), obs=ys)
+            c_prior = (torch.zeros(batch_dim, self.reg_dim, **specs))
+            ys = pyro.sample(
+                "y", dist.Normal(c_prior, self.reg_sig).to_event(1), obs=ys)
             # Score against the parametrized distribution
             # p(x|y,z) = bernoulli(decoder(y,z))
             d_args = (x_coord_prime, [zs, ys]) if self.coord else ([zs, ys],)
@@ -201,8 +203,8 @@ class ssiVAE(baseVAE):
             # sample and score the digit with the variational distribution
             # q(y|x) = categorical(alpha(x))
             if ys is None:
-                alpha = self.encoder_y(xs)
-                ys = pyro.sample("y", dist.OneHotCategorical(alpha))
+                c = self.encoder_y(xs)
+                ys = pyro.sample("y", dist.Normal(c, self.reg_sig).to_event(1))
             # sample (and score) the latent vector with the variational
             # distribution q(z|x,y) = normal(loc(x,y),scale(x,y))
             loc, scale = self.encoder_z([xs, ys])
@@ -232,46 +234,47 @@ class ssiVAE(baseVAE):
             # the extra term to yield an auxiliary loss
             aux_loss_multiplier = kwargs.get("aux_loss_multiplier", 20)
             if ys is not None:
-                alpha = self.encoder_y.forward(xs)
+                c = self.encoder_y.forward(xs)
                 with pyro.poutine.scale(scale=aux_loss_multiplier):
-                    pyro.sample("y_aux", dist.OneHotCategorical(alpha), obs=ys)
+                    pyro.sample(
+                        "y_aux", dist.Normal(c, self.reg_sig).to_event(1), obs=ys)
 
     def guide_aux(self, xs, ys=None, **kwargs):
         """
-        Dummy guide function to accompany model_classify
+        Dummy guide function to accompany model_aux
         """
         pass
 
-    def set_classifier(self, cls_net: Type[torch.nn.Module]) -> None:
+    def set_regressor(self, reg_net: Type[torch.nn.Module]) -> None:
         """
-        Sets a user-defined classification network
+        Sets a user-defined regression network
         """
-        self.encoder_y = cls_net
+        self.encoder_y = reg_net
 
-    def classifier(self,
-                   x_new: torch.Tensor,
-                   **kwargs: int) -> torch.Tensor:
+    def regressor(self,
+                  x_new: torch.Tensor,
+                  **kwargs: int) -> torch.Tensor:
         """
-        Classifies data
+        Applies trained regressor to new data
 
         Args:
             x_new:
-                Data to classify with a trained ss-trVAE. The new data must have
-                the same dimensions (images height x width or spectra length)
-                as the one used for training.
+                Input data for the regressor part of trained ss-reg-VAE.
+                The new data must have the same dimensions
+                (images height x width or spectra length) as the one used
+                for training.
             kwargs:
                 Batch size as 'batch_size' (for encoding large volumes of data)
         """
-        def classify(x_i) -> torch.Tensor:
+        def regress(x_i) -> torch.Tensor:
             with torch.no_grad():
-                alpha = self.encoder_y(x_i)
-            _, predicted = torch.max(alpha.data, 1)
+                predicted = self.encoder_y(x_i)
             return predicted.cpu()
 
         x_new = init_dataloader(x_new, shuffle=False, **kwargs)
         y_predicted = []
         for (x_i,) in x_new:
-            y_predicted.append(classify(x_i.to(self.device)))
+            y_predicted.append(regress(x_i.to(self.device)))
         return torch.cat(y_predicted)
 
     def encode(self,
@@ -283,23 +286,20 @@ class ssiVAE(baseVAE):
 
         Args:
             x_new:
-                Data to encode with a trained trVAE. The new data must have
+                Data to encode. The new data must have
                 the same dimensions (images height and width or spectra length)
                 as the one used for training.
             y:
-                Classes as one-hot vectors for each sample in x_new. If not provided,
-                the ss-trVAE's classifier will be used to predict the classes.
+                Vector with a continuous variable(s) for each sample in x_new.
+                If not provided, the ss-reg-iVAE's regressor will be used to obtain it.
             kwargs:
                 Batch size as 'batch_size' (for encoding large volumes of data)
         """
         if y is None:
-            y = self.classifier(x_new, **kwargs)
-        if y.ndim < 2:
-            y = to_onehot(y, self.num_classes)
+            y = self.regressor(x_new, **kwargs)
         z = self._encode(x_new, y, **kwargs)
         z_loc, z_scale = z.split(self.z_dim, 1)
-        _, y_pred = torch.max(y, 1)
-        return z_loc, z_scale, y_pred
+        return z_loc, z_scale, y
 
     def decode(self, z: torch.Tensor, y: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
@@ -307,33 +307,32 @@ class ssiVAE(baseVAE):
 
         Args:
             z: Latent coordinates (without rotational and translational parts)
-            y: Classes as one-hot vectors for each sample in z
+            y: Vector with continuous variable(s) for each sample in z
             kwargs: Batch size as 'batch_size'
         """
         z = torch.cat([z.to(self.device), y.to(self.device)], -1)
         loc = self._decode(z, **kwargs)
         return loc.view(-1, *self.data_dim)
 
-    def manifold2d(self, d: int, plot: bool = True,
+    def manifold2d(self, d: int, y: torch.Tensor, plot: bool = True,
                    **kwargs: Union[str, int, float]) -> torch.Tensor:
         """
         Returns a learned latent manifold in the image space
 
         Args:
             d: Grid size
+            y: Conditional vector
             plot: Plots the generated manifold (Default: True)
-            kwargs: Keyword arguments include 'label' for class label (if any),
-                    custom min/max values for grid boundaries passed as 'z_coord'
-                    (e.g. z_coord = [-3, 3, -3, 3]), 'angle' and 'shift' to
-                    condition a generative model one, and plot parameters
+            kwargs: Keyword arguments include custom min/max values
+                    for grid boundaries passed as 'z_coord'
+                    (e.g. z_coord = [-3, 3, -3, 3]), 'angle' and
+                    'shift' to condition a generative model on, and plot parameters
                     ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
         """
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
-        cls = tt(kwargs.get("label", 0))
-        if cls.ndim < 2:
-            cls = to_onehot(cls.unsqueeze(0), self.num_classes)
-        cls = cls.repeat(z.shape[0], 1)
-        loc = self.decode(z, cls, **kwargs)
+        y = y.unsqueeze(1) if 0 < y.ndim < 2 else y
+        y = y.expand(z.shape[0], *y.shape[1:])
+        loc = self.decode(z, y, **kwargs)
         if plot:
             if self.ndim == 2:
                 plot_img_grid(
@@ -343,37 +342,3 @@ class ssiVAE(baseVAE):
             elif self.ndim == 1:
                 plot_spect_grid(loc, d, **kwargs)
         return loc
-
-    def manifold_traversal(self, d: int, cont_idx: int, cont_idx_fixed: int = 0,
-                           plot: bool = True, **kwargs: Union[str, int, float]
-                           ) -> torch.Tensor:
-        """
-        Latent space traversal for continuous and discrete latent variables
-
-        Args:
-            d: Grid size
-            cont_idx:
-                Continuous latent variable used for plotting
-                a latent manifold traversal
-            cont_idx_fixed:
-                Value which the remaining continuous latent variables are fixed at
-            plot:
-                Plots the generated manifold (Default: True)
-            kwargs:
-                Keyword arguments include custom min/max values for grid
-                boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3]),
-                'angle' and 'shift' to condition a generative model one,
-                and plot parameters ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
-        """
-        num_samples = d**2
-        disc_dim = self.num_classes
-        cont_dim = self.z_dim - self.coord
-        data_dim = self.data_dim
-        # Get continuous and discrete latent coordinates
-        samples_cont, samples_disc = generate_latent_grid_traversal(
-            d, cont_dim, disc_dim, cont_idx, cont_idx_fixed, num_samples)
-        # Pass discrete and continuous latent coordinates through a decoder
-        decoded = self.decode(samples_cont, samples_disc, **kwargs)
-        if plot:
-            plot_grid_traversal(decoded, d, data_dim, disc_dim, **kwargs)
-        return decoded
