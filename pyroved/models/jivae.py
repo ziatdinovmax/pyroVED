@@ -105,7 +105,7 @@ class jiVAE(baseVAE):
                  **kwargs: Union[str, float]
                  ) -> None:
         """
-        Initializes jtrVAE's modules and parameters
+        Initializes j-iVAE's modules and parameters
         """
         args = (data_dim, invariances)
         super(jiVAE, self).__init__(*args, **kwargs)
@@ -220,7 +220,7 @@ class jiVAE(baseVAE):
 
         Args:
             x_new:
-                Data to encode with a trained jtrVAE. The new data must have
+                Data to encode with a trained j-iVAE. The new data must have
                 the same dimensions (images height and width or spectra length)
                 as the one used for training.
             logits:

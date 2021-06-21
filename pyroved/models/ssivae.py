@@ -111,7 +111,7 @@ class ssiVAE(baseVAE):
                  **kwargs: Union[str, float]
                  ) -> None:
         """
-        Initializes sstrVAE parameters
+        Initializes ss-iVAE parameters
         """
         args = (data_dim, invariances)
         super(ssiVAE, self).__init__(*args, **kwargs)
@@ -256,7 +256,7 @@ class ssiVAE(baseVAE):
 
         Args:
             x_new:
-                Data to classify with a trained ss-trVAE. The new data must have
+                Data to classify with a trained ss-iVAE. The new data must have
                 the same dimensions (images height x width or spectra length)
                 as the one used for training.
             kwargs:
@@ -283,12 +283,12 @@ class ssiVAE(baseVAE):
 
         Args:
             x_new:
-                Data to encode with a trained trVAE. The new data must have
+                Data to encode with a trained iVAE. The new data must have
                 the same dimensions (images height and width or spectra length)
                 as the one used for training.
             y:
                 Classes as one-hot vectors for each sample in x_new. If not provided,
-                the ss-trVAE's classifier will be used to predict the classes.
+                the ss-iVAE's classifier will be used to predict the classes.
             kwargs:
                 Batch size as 'batch_size' (for encoding large volumes of data)
         """

@@ -110,7 +110,7 @@ class ss_reg_iVAE(baseVAE):
                  **kwargs: Union[str, float]
                  ) -> None:
         """
-        Initializes sstrVAE parameters
+        Initializes ss_reg_iVAE parameters
         """
         args = (data_dim, invariances)
         super(ss_reg_iVAE, self).__init__(*args, **kwargs)
