@@ -173,13 +173,7 @@ class ss_reg_iVAE(baseVAE):
                 if 't' in self.invariances:
                     dx = (dx * self.t_prior).unsqueeze(1)
                 # transform coordinate grid
-                if 'r' in self.invariances:
-                    expdim = phi.shape[0]
-                elif 't' in self.invariances:
-                    expdim = dx.shape[0]
-                elif 's' in self.invariances:
-                    expdim = sc.shape[0]
-                grid = self.grid.expand(expdim, *self.grid.shape)
+                grid = self.grid.expand(zs.shape[0], *self.grid.shape)
                 x_coord_prime = transform_coordinates(grid, phi, dx, sc)
             # sample label from the constant prior or observe the value
             c_prior = (torch.zeros(batch_dim, self.reg_dim, **specs))
