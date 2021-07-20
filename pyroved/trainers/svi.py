@@ -161,11 +161,19 @@ class SVItrainer:
             self.loss_history["test_loss"].append(test_loss)
         self.current_epoch += 1
 
-    def print_statistics(self) -> None:
+    def print_statistics(self, print_every: int = 1) -> None:
+        """Prints training and test (if any) losses for current epoch.
+
+        Args:
+            print_every:
+                Only prints every "print_every" epochs.
         """
-        Prints training and test (if any) losses for current epoch
-        """
+
         e = self.current_epoch
+
+        if e % print_every != 0:
+            return
+
         if len(self.loss_history["test_loss"]) > 0:
             template = 'Epoch: {} Training loss: {:.4f}, Test loss: {:.4f}'
             print(template.format(e, self.loss_history["training_loss"][-1],
