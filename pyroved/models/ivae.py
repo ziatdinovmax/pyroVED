@@ -243,37 +243,47 @@ class iVAE(baseVAE):
         loc = self._decode(z, **kwargs)
         return loc
 
-    def manifold2d(self, d: int,
-                   y: torch.Tensor = None,
-                   plot: bool = True,
-                   **kwargs: Union[str, int, float]) -> torch.Tensor:
-        """
-        Plots a learned latent manifold in the image space
+    def manifold2d(
+        self, d: int,
+        y: torch.Tensor = None,
+        plot: bool = True,
+        figsize: Tuple[float] = (8.0, 8.0),
+        **kwargs: Union[str, int, float]
+    ) -> torch.Tensor:
+        """Plots a learned latent manifold in the image space
 
         Args:
-            d: Grid size
-            plot: Plots the generated manifold (Default: True)
-            y: Conditional "property" vector (e.g. one-hot encoded class vector)
-            kwargs: Keyword arguments include custom min/max values
-                    for grid boundaries passed as 'z_coord'
-                    (e.g. z_coord = [-3, 3, -3, 3]), 'angle' and
-                    'shift' to condition a generative model on, and plot parameters
-                    ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
+            d:
+                Grid size
+            plot:
+                Plots the generated manifold (Default: True)
+            y:
+                Conditional "property" vector (e.g. one-hot encoded class
+                vector)
+            kwargs:
+                Keyword arguments include custom min/max values for grid
+                boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3]),
+                'angle' and 'shift' to condition a generative model on, and
+                plot parameters ('padding', 'padding_value', 'cmap', 'origin',
+                'ylim').
         """
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
         z = [z]
         if self.c_dim > 0:
             if y is None:
-                raise ValueError("To generate a manifold pass a conditional vector y") 
+                raise ValueError(
+                    "To generate a manifold pass a conditional vector y"
+                )
             y = y.unsqueeze(1) if 0 < y.ndim < 2 else y
             z = z + [y.expand(z[0].shape[0], *y.shape[1:])]
         loc = self.decode(*z, **kwargs)
         if plot:
             if self.ndim == 2:
                 plot_img_grid(
-                    loc, d,
-                    extent=[grid_x.min(), grid_x.max(), grid_y.min(), grid_y.max()],
-                    **kwargs)
+                    loc, d, extent=[
+                        grid_x.min(), grid_x.max(), grid_y.min(),
+                        grid_y.max()
+                    ], figsize=figsize, **kwargs)
             elif self.ndim == 1:
-                plot_spect_grid(loc, d, **kwargs)
+                plot_spect_grid(loc, d, figsize=figsize, **kwargs)
         return loc
