@@ -248,6 +248,7 @@ class iVAE(baseVAE):
         y: torch.Tensor = None,
         plot: bool = True,
         figsize: Tuple[float] = (8.0, 8.0),
+        latents: Tuple[int] = [0, 1],
         **kwargs: Union[str, int, float]
     ) -> torch.Tensor:
         """Plots a learned latent manifold in the image space
@@ -268,7 +269,16 @@ class iVAE(baseVAE):
                 'ylim').
         """
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
-        z = [z]
+
+        # We silence all other latent variables except those listed in the
+        # latent list by setting them to zero. Note this choice is arbitrary
+        # and is just a consequence of only being able to easily visualize
+        # two axes at once.
+        z_tmp = torch.zeros(size=(z.shape[0], self.z_dim - self.coord))
+        z_tmp[:, latents[0]] = z[:, 0]
+        z_tmp[:, latents[1]] = z[:, 1]
+        z = [z_tmp]
+
         if self.c_dim > 0:
             if y is None:
                 raise ValueError(
