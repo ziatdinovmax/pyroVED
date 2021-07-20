@@ -117,7 +117,7 @@ class iVAE(baseVAE):
         **kwargs: Union[str, float]
          ) -> None:
         args = (data_dim, invariances)
-        super(iVAE, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Reset the pyro ParamStoreDict object's dictionaries
         pyro.clear_param_store()
@@ -276,7 +276,9 @@ class iVAE(baseVAE):
                 )
             y = y.unsqueeze(1) if 0 < y.ndim < 2 else y
             z = z + [y.expand(z[0].shape[0], *y.shape[1:])]
+
         loc = self.decode(*z, **kwargs)
+
         if plot:
             if self.ndim == 2:
                 plot_img_grid(
