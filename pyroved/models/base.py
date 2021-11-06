@@ -76,7 +76,8 @@ class baseVAE(nn.Module):
         if self.coord > 0:
             self.grid = generate_grid(data_dim).to(self.device)
         # Optional custom normal prior over latent variables
-        self.z_prior = kwargs.get("z_prior", (0, 1))
+        z_prior = kwargs.get("z_prior", tt([0, 1]))
+        self.z_prior = [zp.to(self.device) for zp in z_prior]
         # Prior "belief" about the degree of translational disorder
         if self.coord > 0 and 't' in self.invariances:
             dx_pri = tt(kwargs.get("dx_prior", 0.1))
