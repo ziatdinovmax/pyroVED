@@ -37,6 +37,12 @@ class baseVAE(nn.Module):
         device:
             Sets device to which model and data will be moved.
             Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
+        z_prior:
+            Tuple with two tensors corresponding to mean and scale
+            of normal prior over latent variable. For example,
+            z_prior = (torch.zeros(3), torch.ones(3) * 0.5). Allows specifying
+            different priors for different latent variables.
+            Defaults to standard normal prior for all latent variables.
         dx_prior:
             Translational prior in x direction (float between 0 and 1)
         dy_prior:
@@ -69,6 +75,8 @@ class baseVAE(nn.Module):
         # Set coordiante grid
         if self.coord > 0:
             self.grid = generate_grid(data_dim).to(self.device)
+        # Optional custom normal prior over latent variables
+        self.z_prior = kwargs.get("z_prior", (0, 1))
         # Prior "belief" about the degree of translational disorder
         if self.coord > 0 and 't' in self.invariances:
             dx_pri = tt(kwargs.get("dx_prior", 0.1))
