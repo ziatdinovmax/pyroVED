@@ -72,12 +72,22 @@ class jiVAE(baseVAE):
         device:
             Sets device to which model and data will be moved.
             Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
+        z_prior:
+            Tuple with two tensors corresponding to mean and scale
+            of normal prior over latent variable. For example,
+            z_prior = (torch.zeros(3), torch.ones(3) * 0.5). Allows specifying
+            different priors for different latent variables. The size must be
+            consistent witht he number of latent variables (3, in the example above)
+            Defaults to standard normal prior for all latent variables.
         dx_prior:
             Translational prior in x direction (float between 0 and 1)
+            Translational 'prior' in x direction (float between 0 and 1)
         dy_prior:
             Translational prior in y direction (float between 0 and 1)
+            Translational 'prior' in y direction (float between 0 and 1)
         sc_prior:
             Scale prior (usually, sc_prior << 1)
+            Scale 'prior' (usually, sc_prior << 1)
         decoder_sig:
             Sets sigma for a "gaussian" decoder sampler
 
@@ -152,8 +162,8 @@ class jiVAE(baseVAE):
         bdim = x.shape[0]
         with pyro.plate("data"):
             # sample the continuous latent vector from the constant prior distribution
-            z_loc = x.new_zeros(torch.Size((bdim, self.z_dim)))
-            z_scale = x.new_ones(torch.Size((bdim, self.z_dim)))
+            z_loc = x.new_zeros(torch.Size((bdim, self.z_dim))) + self.z_prior[0]
+            z_scale = x.new_ones(torch.Size((bdim, self.z_dim))) + self.z_prior[1]
             # sample discrete latent vector from the constant prior
             alpha = x.new_ones(torch.Size((bdim, self.discrete_dim))) / self.discrete_dim
             # sample from prior (value will be sampled by guide when computing ELBO)

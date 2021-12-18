@@ -76,12 +76,22 @@ class ssiVAE(baseVAE):
         device:
             Sets device to which model and data will be moved.
             Defaults to 'cuda:0' if a GPU is available and to CPU otherwise.
+        z_prior:
+            Tuple with two tensors corresponding to mean and scale
+            of normal prior over latent variable. For example,
+            z_prior = (torch.zeros(3), torch.ones(3) * 0.5). Allows specifying
+            different priors for different latent variables. The size must be
+            consistent witht he number of latent variables (3, in the example above)
+            Defaults to standard normal prior for all latent variables.
         dx_prior:
             Translational prior in x direction (float between 0 and 1)
+            Translational 'prior' in x direction (float between 0 and 1)
         dy_prior:
             Translational prior in y direction (float between 0 and 1)
+            Translational 'prior' in y direction (float between 0 and 1)
         sc_prior:
             Scale prior (usually, sc_prior << 1)
+            Scale 'prior' (usually, sc_prior << 1)
         decoder_sig:
             Sets sigma for a "gaussian" decoder sampler
 
@@ -159,8 +169,8 @@ class ssiVAE(baseVAE):
         # pyro.plate enforces independence between variables in batches xs, ys
         with pyro.plate("data"):
             # sample the latent vector from the constant prior distribution
-            prior_loc = torch.zeros(batch_dim, self.z_dim, **specs)
-            prior_scale = torch.ones(batch_dim, self.z_dim, **specs)
+            prior_loc = torch.zeros(batch_dim, self.z_dim, **specs) + self.z_prior[0]
+            prior_scale = torch.ones(batch_dim, self.z_dim, **specs) + self.z_prior[1]
             with pyro.poutine.scale(scale=beta):
                 zs = pyro.sample(
                     "z", dist.Normal(prior_loc, prior_scale).to_event(1))
