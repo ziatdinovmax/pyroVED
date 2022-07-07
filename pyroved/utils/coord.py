@@ -40,7 +40,7 @@ def generate_grid(data_dim: Tuple[int]) -> torch.Tensor:
     if len(data_dim) not in [1, 2]:
         raise NotImplementedError("Currently supports only 1D and 2D data")
     if len(data_dim) == 1:
-        return torch.linspace(-1, 1, data_dim[0])[:, None]
+        return torch.linspace(1, -1, data_dim[0])[:, None]
     return imcoordgrid(data_dim)
 
 
