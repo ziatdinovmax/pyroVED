@@ -126,7 +126,7 @@ class iVAE(baseVAE):
 
         # Initialize the encoder network
         self.encoder_z = fcEncoderNet(
-            data_dim, latent_dim + self.coord, 0, hidden_dim_e, num_layers_e,
+            data_dim, latent_dim + self.coord, c_dim, hidden_dim_e, num_layers_e,
             activation, softplus_out=True
         )
         # Initialize the decoder network
@@ -197,7 +197,8 @@ class iVAE(baseVAE):
         beta = kwargs.get("scale_factor", 1.)
         with pyro.plate("data", x.shape[0]):
             # use the encoder to get the parameters used to define q(z|x)
-            z_loc, z_scale = self.encoder_z(x)
+            enc_args = [x, y] if y is not None else x
+            z_loc, z_scale = self.encoder_z(enc_args)
             # sample the latent code z
             with pyro.poutine.scale(scale=beta):
                 pyro.sample("latent", dist.Normal(z_loc, z_scale).to_event(1))
@@ -209,7 +210,10 @@ class iVAE(baseVAE):
         """
         return self._split_latent(z)
 
-    def encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
+    def encode(self,
+               x_new: torch.Tensor,
+               y: torch.Tensor = None,
+               **kwargs: int) -> torch.Tensor:
         """
         Encodes data using a trained inference (encoder) network
 
@@ -218,6 +222,7 @@ class iVAE(baseVAE):
                 Data to encode with a trained (i)VAE model. The new data must have
                 the same dimensions (images height and width or spectra length)
                 as the one used for training.
+            y: Conditional "property" vector (e.g. one-hot encoded classes)
             kwargs:
                 Batch size as 'batch_size' (for encoding large volumes of data)
         """
