@@ -46,14 +46,14 @@ class ss_reg_iVAE(baseVAE):
             Number of hidden units per each layer in encoder (inference network).
         hidden_dim_d:
             Number of hidden units per each layer in decoder (generator network).
-        hidden_dim_cls:
-            Number of hidden units ("neurons") in each layer of classifier
+        hidden_dim_reg:
+            Number of hidden units ("neurons") in each layer of regression NN
         num_layers_e:
             Number of layers in encoder (inference network).
         num_layers_d:
             Number of layers in decoder (generator network).
-        num_layers_cls:
-            Number of layers in classifier
+        num_layers_reg:
+            Number of layers in regression NN
         activation:
             Non-linear activation for inner layers of both encoder and the decoder.
             The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
@@ -99,10 +99,10 @@ class ss_reg_iVAE(baseVAE):
                  invariances: List[str] = None,
                  hidden_dim_e: int = 128,
                  hidden_dim_d: int = 128,
-                 hidden_dim_cls: int = 128,
+                 hidden_dim_reg: int = 128,
                  num_layers_e: int = 2,
                  num_layers_d: int = 2,
-                 num_layers_cls: int = 2,
+                 num_layers_reg: int = 2,
                  activation: str = "tanh",
                  sampler_d: str = "bernoulli",
                  sigmoid_d: bool = True,
@@ -126,7 +126,7 @@ class ss_reg_iVAE(baseVAE):
 
         # Initialize y-Encoder neural network
         self.encoder_y = fcRegressorNet(
-            data_dim, reg_dim, hidden_dim_cls, num_layers_cls,
+            data_dim, reg_dim, hidden_dim_reg, num_layers_reg,
             activation)
 
         # Initializes Decoder neural network
