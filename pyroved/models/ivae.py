@@ -226,7 +226,8 @@ class iVAE(baseVAE):
             kwargs:
                 Batch size as 'batch_size' (for encoding large volumes of data)
         """
-        z = self._encode(x_new)
+        enc_args = torch.cat([x_new, y], -1) if y is not None else x_new
+        z = self._encode(enc_args)
         z_loc, z_scale = z.split(self.z_dim, 1)
         return z_loc, z_scale
 
