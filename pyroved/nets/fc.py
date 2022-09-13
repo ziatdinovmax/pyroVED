@@ -115,8 +115,6 @@ class jfcEncoderNet(nn.Module):
         self.concat = Concat()
         self.fc_layers = make_fc_layers(
             self.in_dim, hidden_dim, activation)
-        if isinstance(hidden_dim, (list, tuple)):
-            hidden_dim = hidden_dim[-1]
         self.fc11 = nn.Linear(hidden_dim[-1], latent_dim)
         self.fc12 = nn.Linear(hidden_dim[-1], latent_dim)
         self.fc13 = nn.Linear(hidden_dim[-1], discrete_dim)
@@ -210,7 +208,7 @@ class sDecoderNet(nn.Module):
         self.coord_latent = coord_latent(
             latent_dim+c_dim, hidden_dim[0], coord_dim)
         self.fc_layers = make_fc_layers(
-            hidden_dim, hidden_dim, activation)
+            hidden_dim[0], hidden_dim, activation)
         self.out = nn.Linear(hidden_dim[-1], 1)  # need to generalize to multi-channel (c > 1)
         self.activation_out = nn.Sigmoid() if sigmoid_out else lambda x: x
 
@@ -312,6 +310,8 @@ class fcRegressorNet(nn.Module):
         if len(in_dim) not in [1, 2, 3]:
             raise ValueError("in_dim must be (h, w), (h, w, c), or (l,)")
         self.in_dim = torch.prod(tt(in_dim)).item()
+        if hidden_dim is None:
+            hidden_dim = [128, 128]
 
         self.fc_layers = make_fc_layers(
             self.in_dim, hidden_dim, activation)
