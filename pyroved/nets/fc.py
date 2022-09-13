@@ -69,6 +69,8 @@ class fcEncoderNet(nn.Module):
         self.concat = Concat()
         self.fc_layers = make_fc_layers(
             self.in_dim, hidden_dim, num_layers, activation)
+        if isinstance(hidden_dim, (list, tuple)):
+            hidden_dim = hidden_dim[-1]
         self.fc11 = nn.Linear(hidden_dim, latent_dim)
         self.fc12 = nn.Linear(hidden_dim, latent_dim)
         self.activation_out = nn.Softplus() if softplus_out else lambda x: x
@@ -113,6 +115,8 @@ class jfcEncoderNet(nn.Module):
         self.concat = Concat()
         self.fc_layers = make_fc_layers(
             self.in_dim, hidden_dim, num_layers, activation)
+        if isinstance(hidden_dim, (list, tuple)):
+            hidden_dim = hidden_dim[-1]
         self.fc11 = nn.Linear(hidden_dim, latent_dim)
         self.fc12 = nn.Linear(hidden_dim, latent_dim)
         self.fc13 = nn.Linear(hidden_dim, discrete_dim)
@@ -160,6 +164,8 @@ class fcDecoderNet(nn.Module):
         self.concat = Concat()
         self.fc_layers = make_fc_layers(
             latent_dim+c_dim, hidden_dim, num_layers, activation)
+        if isinstance(hidden_dim, (list, tuple)):
+            hidden_dim = hidden_dim[-1]
         self.out = nn.Linear(hidden_dim, out_dim)
         self.activation_out = nn.Sigmoid() if sigmoid_out else lambda x: x
 
@@ -277,6 +283,8 @@ class fcClassifierNet(nn.Module):
 
         self.fc_layers = make_fc_layers(
             self.in_dim, hidden_dim, num_layers, activation)
+        if isinstance(hidden_dim, (list, tuple)):
+            hidden_dim = hidden_dim[-1]
         self.out = nn.Linear(hidden_dim, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -309,6 +317,8 @@ class fcRegressorNet(nn.Module):
 
         self.fc_layers = make_fc_layers(
             self.in_dim, hidden_dim, num_layers, activation)
+        if isinstance(hidden_dim, (list, tuple)):
+            hidden_dim = hidden_dim[-1]
         self.out = nn.Linear(hidden_dim, c_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -320,21 +330,21 @@ class fcRegressorNet(nn.Module):
 
 
 def make_fc_layers(in_dim: int,
-                   hidden_dim: int = 128,
-                   num_layers: int = 2,
+                   hidden_dim: Union[int, List[int]],
+                   num_layers: int = None,
                    activation: str = "tanh"
                    ) -> Type[nn.Module]:
     """
     Generates a module with stacked fully-connected (aka dense) layers
     """
-    if isinstance(hidden_dim, (list, tuple)) and len(hidden_dim) != num_layers:
-        raise ValueError(
-            "Number of elements in 'hidden_dim' list" + 
-            " must be equal to the number of layers")
     if isinstance(hidden_dim, int):
+        if num_layers is None:
+            raise ValueError(
+                "Please specify the number of layers (num_layers)")
         hidden_dim = [hidden_dim for _ in range(num_layers)]
     if isinstance(hidden_dim, tuple):
         hidden_dim = list(hidden_dim)
+    num_layers = len(hidden_dim)        
     hidden_dim = [in_dim] + hidden_dim
     fc_layers = []
     for i in range(1, num_layers+1):
