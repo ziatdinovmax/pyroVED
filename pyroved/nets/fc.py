@@ -51,8 +51,7 @@ class fcEncoderNet(nn.Module):
                  in_dim: Tuple[int],
                  latent_dim: int = 2,
                  c_dim: int = 0,
-                 hidden_dim: int = 128,
-                 num_layers: int = 2,
+                 hidden_dim: List[int] = None,
                  activation: str = 'tanh',
                  softplus_out: bool = True,
                  flat: bool = True
@@ -64,15 +63,15 @@ class fcEncoderNet(nn.Module):
         if len(in_dim) not in [1, 2, 3]:
             raise ValueError("in_dim must be (h, w), (h, w, c), or (l,)")
         self.in_dim = torch.prod(tt(in_dim)).item() + c_dim
+        if hidden_dim is None:
+            hidden_dim = [128, 128]
         self.flat = flat
 
         self.concat = Concat()
         self.fc_layers = make_fc_layers(
-            self.in_dim, hidden_dim, num_layers, activation)
-        if isinstance(hidden_dim, (list, tuple)):
-            hidden_dim = hidden_dim[-1]
-        self.fc11 = nn.Linear(hidden_dim, latent_dim)
-        self.fc12 = nn.Linear(hidden_dim, latent_dim)
+            self.in_dim, hidden_dim, activation)
+        self.fc11 = nn.Linear(hidden_dim[-1], latent_dim)
+        self.fc12 = nn.Linear(hidden_dim[-1], latent_dim)
         self.activation_out = nn.Softplus() if softplus_out else lambda x: x
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor]:
@@ -97,8 +96,7 @@ class jfcEncoderNet(nn.Module):
                  in_dim: Tuple[int],
                  latent_dim: int = 2,
                  discrete_dim: int = 0,
-                 hidden_dim: int = 128,
-                 num_layers: int = 2,
+                 hidden_dim: List[int] = None,
                  activation: str = 'tanh',
                  softplus_out: bool = True,
                  flat: bool = True
@@ -110,16 +108,18 @@ class jfcEncoderNet(nn.Module):
         if len(in_dim) not in [1, 2, 3]:
             raise ValueError("in_dim must be (h, w), (h, w, c), or (l,)")
         self.in_dim = torch.prod(tt(in_dim)).item()
+        if hidden_dim is None:
+            hidden_dim = [128, 128]
         self.flat = flat
 
         self.concat = Concat()
         self.fc_layers = make_fc_layers(
-            self.in_dim, hidden_dim, num_layers, activation)
+            self.in_dim, hidden_dim, activation)
         if isinstance(hidden_dim, (list, tuple)):
             hidden_dim = hidden_dim[-1]
-        self.fc11 = nn.Linear(hidden_dim, latent_dim)
-        self.fc12 = nn.Linear(hidden_dim, latent_dim)
-        self.fc13 = nn.Linear(hidden_dim, discrete_dim)
+        self.fc11 = nn.Linear(hidden_dim[-1], latent_dim)
+        self.fc12 = nn.Linear(hidden_dim[-1], latent_dim)
+        self.fc13 = nn.Linear(hidden_dim[-1], discrete_dim)
         self.activation_out = nn.Softplus() if softplus_out else lambda x: x
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor]:
@@ -144,8 +144,7 @@ class fcDecoderNet(nn.Module):
                  out_dim: Tuple[int],
                  latent_dim: int,
                  c_dim: int = 0,
-                 hidden_dim: int = 128,
-                 num_layers: int = 2,
+                 hidden_dim: List[int] = None,
                  activation: str = 'tanh',
                  sigmoid_out: bool = True,
                  unflat: bool = True
@@ -160,13 +159,13 @@ class fcDecoderNet(nn.Module):
         if self.unflat:
             self.reshape = out_dim
         out_dim = torch.prod(tt(out_dim)).item()
+        if hidden_dim is None:
+            hidden_dim = [128, 128]
 
         self.concat = Concat()
         self.fc_layers = make_fc_layers(
-            latent_dim+c_dim, hidden_dim, num_layers, activation)
-        if isinstance(hidden_dim, (list, tuple)):
-            hidden_dim = hidden_dim[-1]
-        self.out = nn.Linear(hidden_dim, out_dim)
+            latent_dim+c_dim, hidden_dim, activation)
+        self.out = nn.Linear(hidden_dim[-1], out_dim)
         self.activation_out = nn.Sigmoid() if sigmoid_out else lambda x: x
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
@@ -189,8 +188,7 @@ class sDecoderNet(nn.Module):
                  out_dim: Tuple[int],
                  latent_dim: int,
                  c_dim: int = 0,
-                 hidden_dim: int = 128,
-                 num_layers: int = 2,
+                 hidden_dim: List[int] = None,
                  activation: str = 'tanh',
                  sigmoid_out: bool = True,
                  unflat: bool = True
@@ -204,14 +202,16 @@ class sDecoderNet(nn.Module):
         self.unflat = unflat
         if self.unflat:
             self.reshape = out_dim
+        if hidden_dim is None:
+            hidden_dim = [128, 128]
         coord_dim = 1 if len(out_dim) < 2 else 2
 
         self.concat = Concat()
         self.coord_latent = coord_latent(
-            latent_dim+c_dim, hidden_dim, coord_dim)
+            latent_dim+c_dim, hidden_dim[0], coord_dim)
         self.fc_layers = make_fc_layers(
-            hidden_dim, hidden_dim, num_layers, activation)
-        self.out = nn.Linear(hidden_dim, 1)  # need to generalize to multi-channel (c > 1)
+            hidden_dim, hidden_dim, activation)
+        self.out = nn.Linear(hidden_dim[-1], 1)  # need to generalize to multi-channel (c > 1)
         self.activation_out = nn.Sigmoid() if sigmoid_out else lambda x: x
 
     def forward(self, x_coord: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
@@ -269,8 +269,7 @@ class fcClassifierNet(nn.Module):
     def __init__(self,
                  in_dim: Tuple[int],
                  num_classes: int,
-                 hidden_dim: int = 128,
-                 num_layers: int = 2,
+                 hidden_dim: List[int] = None,
                  activation: str = 'tanh'
                  ) -> None:
         """
@@ -280,12 +279,12 @@ class fcClassifierNet(nn.Module):
         if len(in_dim) not in [1, 2, 3]:
             raise ValueError("in_dim must be (h, w), (h, w, c), or (l,)")
         self.in_dim = torch.prod(tt(in_dim)).item()
+        if hidden_dim is None:
+            hidden_dim = [128, 128]
 
         self.fc_layers = make_fc_layers(
-            self.in_dim, hidden_dim, num_layers, activation)
-        if isinstance(hidden_dim, (list, tuple)):
-            hidden_dim = hidden_dim[-1]
-        self.out = nn.Linear(hidden_dim, num_classes)
+            self.in_dim, hidden_dim, activation)
+        self.out = nn.Linear(hidden_dim[-1], num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -303,8 +302,7 @@ class fcRegressorNet(nn.Module):
     def __init__(self,
                  in_dim: Tuple[int],
                  c_dim: int,
-                 hidden_dim: int = 128,
-                 num_layers: int = 2,
+                 hidden_dim: List[int] = None,
                  activation: str = 'tanh'
                  ) -> None:
         """
@@ -316,10 +314,8 @@ class fcRegressorNet(nn.Module):
         self.in_dim = torch.prod(tt(in_dim)).item()
 
         self.fc_layers = make_fc_layers(
-            self.in_dim, hidden_dim, num_layers, activation)
-        if isinstance(hidden_dim, (list, tuple)):
-            hidden_dim = hidden_dim[-1]
-        self.out = nn.Linear(hidden_dim, c_dim)
+            self.in_dim, hidden_dim, activation)
+        self.out = nn.Linear(hidden_dim[-1], c_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -330,26 +326,20 @@ class fcRegressorNet(nn.Module):
 
 
 def make_fc_layers(in_dim: int,
-                   hidden_dim: Union[int, List[int]],
-                   num_layers: int = None,
+                   hidden_dim: List[int],
                    activation: str = "tanh"
                    ) -> Type[nn.Module]:
     """
     Generates a module with stacked fully-connected (aka dense) layers
     """
-    if isinstance(hidden_dim, int):
-        if num_layers is None:
-            raise ValueError(
-                "Please specify the number of layers (num_layers)")
-        hidden_dim = [hidden_dim for _ in range(num_layers)]
     if isinstance(hidden_dim, tuple):
         hidden_dim = list(hidden_dim)
     num_layers = len(hidden_dim)        
-    hidden_dim = [in_dim] + hidden_dim
+    dims = [in_dim] + hidden_dim
     fc_layers = []
     for i in range(1, num_layers+1):
         fc_layers.extend(
-            [nn.Linear(hidden_dim[i-1], hidden_dim[i]),
+            [nn.Linear(dims[i-1], dims[i]),
              get_activation(activation)()])
     fc_layers = nn.Sequential(*fc_layers)
     return fc_layers

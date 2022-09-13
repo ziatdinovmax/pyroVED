@@ -46,17 +46,14 @@ class ssiVAE(baseVAE):
             For 1D systems, 't' enforces translational invariance and
             invariances=None is vanilla VAE
         hidden_dim_e:
-            Number of hidden units per each layer in encoder (inference network).
+            List with the number of hidden units in each layer
+            of encoder (inference network). Defaults to [128, 128].
         hidden_dim_d:
-            Number of hidden units per each layer in decoder (generator network).
+            List with the number of hidden units in each layer
+            of decoder (generator network). Defaults to [128, 128].
         hidden_dim_cls:
-            Number of hidden units ("neurons") in each layer of classifier
-        num_layers_e:
-            Number of layers in encoder (inference network).
-        num_layers_d:
-            Number of layers in decoder (generator network).
-        num_layers_cls:
-            Number of layers in classifier
+            List with the number of hidden units of each layer of classifier.
+            Defaults to [128, 128].
         activation:
             Non-linear activation for inner layers of both encoder and the decoder.
             The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
@@ -98,12 +95,9 @@ class ssiVAE(baseVAE):
                  latent_dim: int,
                  num_classes: int,
                  invariances: List[str] = None,
-                 hidden_dim_e: int = 128,
-                 hidden_dim_d: int = 128,
-                 hidden_dim_cls: int = 128,
-                 num_layers_e: int = 2,
-                 num_layers_d: int = 2,
-                 num_layers_cls: int = 2,
+                 hidden_dim_e: List[int] = None,
+                 hidden_dim_d: List[int] = None,
+                 hidden_dim_cls: List[int] = None,
                  activation: str = "tanh",
                  sampler_d: str = "bernoulli",
                  sigmoid_d: bool = True,
@@ -123,19 +117,17 @@ class ssiVAE(baseVAE):
         # Initialize z-Encoder neural network
         self.encoder_z = fcEncoderNet(
             data_dim, latent_dim+self.coord, num_classes,
-            hidden_dim_e, num_layers_e, activation, flat=False)
+            hidden_dim_e, activation, flat=False)
 
         # Initialize y-Encoder neural network
         self.encoder_y = fcClassifierNet(
-            data_dim, num_classes, hidden_dim_cls, num_layers_cls,
-            activation)
+            data_dim, num_classes, hidden_dim_cls, activation)
 
         # Initializes Decoder neural network
         dnet = sDecoderNet if 0 < self.coord < 5 else fcDecoderNet
         self.decoder = dnet(
             data_dim, latent_dim, num_classes, hidden_dim_d,
-            num_layers_d, activation, sigmoid_out=sigmoid_d,
-            unflat=False)
+            activation, sigmoid_out=sigmoid_d, unflat=False)
         self.sampler_d = get_sampler(sampler_d, **kwargs)
 
         # Sets continuous and discrete dimensions

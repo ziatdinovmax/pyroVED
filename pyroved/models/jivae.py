@@ -46,13 +46,11 @@ class jiVAE(baseVAE):
             For 1D systems, 't' enforces translational invariance and
             invariances=None is vanilla VAE
         hidden_dim_e:
-            Number of hidden units per each layer in encoder (inference network).
+            List with the number of hidden units in each layer of
+            encoder (inference network). Defaults to [128, 128].
         hidden_dim_d:
-            Number of hidden units per each layer in decoder (generator network).
-        num_layers_e:
-            Number of layers in encoder (inference network).
-        num_layers_d:
-            Number of layers in decoder (generator network).
+            List with the number of hidden units in each layer of
+            decoder (generator network). Defau;ts to [128, 128].
         activation:
             Non-linear activation for inner layers of encoder and decoder.
             The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
@@ -94,10 +92,8 @@ class jiVAE(baseVAE):
                  latent_dim: int,
                  discrete_dim: int,
                  invariances: List[str] = None,
-                 hidden_dim_e: int = 128,
-                 hidden_dim_d: int = 128,
-                 num_layers_e: int = 2,
-                 num_layers_d: int = 2,
+                 hidden_dim_e: List[int] = None,
+                 hidden_dim_d: List[int] = None,
                  activation: str = "tanh",
                  sampler_d: str = "bernoulli",
                  sigmoid_d: bool = True,
@@ -115,14 +111,14 @@ class jiVAE(baseVAE):
 
         # Initialize the Encoder NN
         self.encoder_z = jfcEncoderNet(
-            data_dim, latent_dim+self.coord, discrete_dim, hidden_dim_e,
-            num_layers_e, activation, softplus_out=True)
+            data_dim, latent_dim+self.coord, discrete_dim,
+            hidden_dim_e, activation, softplus_out=True)
 
         # Initialize the Decoder NN
         dnet = sDecoderNet if 0 < self.coord < 5 else fcDecoderNet
         self.decoder = dnet(
             data_dim, latent_dim, discrete_dim, hidden_dim_d,
-            num_layers_d, activation, sigmoid_out=sigmoid_d, unflat=False)
+            activation, sigmoid_out=sigmoid_d, unflat=False)
 
         # Initialize the decoder's sampler
         self.sampler_d = get_sampler(sampler_d, **kwargs)

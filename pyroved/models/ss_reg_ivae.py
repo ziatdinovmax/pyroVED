@@ -43,17 +43,14 @@ class ss_reg_iVAE(baseVAE):
             For 1D systems, 't' enforces translational invariance and
             invariances=None is vanilla VAE
         hidden_dim_e:
-            Number of hidden units per each layer in encoder (inference network).
+            List with the number of hidden units in each layer
+            of encoder (inference network). Defautls to [128, 128].
         hidden_dim_d:
-            Number of hidden units per each layer in decoder (generator network).
+            List with the number of hidden units in each layer
+            of decoder (generator network). Defaults to [128, 128].
         hidden_dim_reg:
-            Number of hidden units ("neurons") in each layer of regression NN
-        num_layers_e:
-            Number of layers in encoder (inference network).
-        num_layers_d:
-            Number of layers in decoder (generator network).
-        num_layers_reg:
-            Number of layers in regression NN
+            List with the number of hidden units in each layer of regression NN.
+            Defaults to [128, 128].
         activation:
             Non-linear activation for inner layers of both encoder and the decoder.
             The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
@@ -97,12 +94,9 @@ class ss_reg_iVAE(baseVAE):
                  latent_dim: int,
                  reg_dim: int,
                  invariances: List[str] = None,
-                 hidden_dim_e: int = 128,
-                 hidden_dim_d: int = 128,
-                 hidden_dim_reg: int = 128,
-                 num_layers_e: int = 2,
-                 num_layers_d: int = 2,
-                 num_layers_reg: int = 2,
+                 hidden_dim_e: List[int] = None,
+                 hidden_dim_d: List[int] = None,
+                 hidden_dim_reg: List[int] = None,
                  activation: str = "tanh",
                  sampler_d: str = "bernoulli",
                  sigmoid_d: bool = True,
@@ -122,19 +116,17 @@ class ss_reg_iVAE(baseVAE):
         # Initialize z-Encoder neural network
         self.encoder_z = fcEncoderNet(
             data_dim, latent_dim+self.coord, reg_dim,
-            hidden_dim_e, num_layers_e, activation, flat=False)
+            hidden_dim_e, activation, flat=False)
 
         # Initialize y-Encoder neural network
         self.encoder_y = fcRegressorNet(
-            data_dim, reg_dim, hidden_dim_reg, num_layers_reg,
-            activation)
+            data_dim, reg_dim, hidden_dim_reg, activation)
 
         # Initializes Decoder neural network
         dnet = sDecoderNet if 0 < self.coord < 5 else fcDecoderNet
         self.decoder = dnet(
             data_dim, latent_dim, reg_dim, hidden_dim_d,
-            num_layers_d, activation, sigmoid_out=sigmoid_d,
-            unflat=False)
+            activation, sigmoid_out=sigmoid_d, unflat=False)
         self.sampler_d = get_sampler(sampler_d, **kwargs)
 
         # Set sigma for regression sampler

@@ -48,17 +48,11 @@ class iVAE(baseVAE):
             the corresponding n x 10 vector should represent one-hot encoded labels.
             (The default c_dim value is 0, i.e. no conditioning is performed).
         hidden_dim_e:
-            Number of hidden units per each layer in encoder (inference
-            network). (The default is 128).
+            List with the number of hidden units per each layer in encoder (inference
+            network). Defaults to [128, 128].
         hidden_dim_d:
-            Number of hidden units per each layer in decoder (generator
-            network). (The default is 128).
-        num_layers_e:
-            Number of layers in encoder (inference network). (The default is
-            2).
-        num_layers_d:
-            Number of layers in decoder (generator network). (The default is
-            2).
+            List with the number of hidden units per each layer in decoder (generator
+            network). Defaults to [128, 128].
         activation:
             Non-linear activation for inner layers of encoder and decoder.
             The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
@@ -108,8 +102,6 @@ class iVAE(baseVAE):
         c_dim: int = 0,
         hidden_dim_e: int = 128,
         hidden_dim_d: int = 128,
-        num_layers_e: int = 2,
-        num_layers_d: int = 2,
         activation: str = "tanh",
         sampler_d: str = "bernoulli",
         sigmoid_d: bool = True,
@@ -126,13 +118,13 @@ class iVAE(baseVAE):
 
         # Initialize the encoder network
         self.encoder_z = fcEncoderNet(
-            data_dim, latent_dim + self.coord, c_dim, hidden_dim_e, num_layers_e,
+            data_dim, latent_dim + self.coord, c_dim, hidden_dim_e,
             activation, softplus_out=True
         )
         # Initialize the decoder network
         dnet = sDecoderNet if 0 < self.coord < 5 else fcDecoderNet
         self.decoder = dnet(
-            data_dim, latent_dim, c_dim, hidden_dim_d, num_layers_d,
+            data_dim, latent_dim, c_dim, hidden_dim_d,
             activation, sigmoid_out=sigmoid_d
         )
         # Initialize the decoder's sampler
