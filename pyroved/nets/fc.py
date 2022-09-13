@@ -227,7 +227,7 @@ class sDecoderNet(nn.Module):
 
 class coord_latent(nn.Module):
     """
-    The "spatial" part of the trVAE's decoder that allows for translational
+    The "spatial" part of the iVAE's decoder that allows for translational
     and rotational invariance (based on https://arxiv.org/abs/1909.11663)
     """
     def __init__(self,
@@ -246,6 +246,9 @@ class coord_latent(nn.Module):
     def forward(self,
                 x_coord: torch.Tensor,
                 z: Tuple[torch.Tensor]) -> torch.Tensor:
+        """
+        Forward pass
+        """
         batch_dim, n = x_coord.size()[:2]
         x_coord = x_coord.reshape(batch_dim * n, -1)
         h_x = self.fc_coord(x_coord)
@@ -295,7 +298,7 @@ class fcClassifierNet(nn.Module):
 
 class fcRegressorNet(nn.Module):
     """
-    Simple classification neural network with fully-connected layers only.
+    Simple regression neural network with fully-connected layers only.
     """
     def __init__(self,
                  in_dim: Tuple[int],
