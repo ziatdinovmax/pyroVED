@@ -327,11 +327,19 @@ def make_fc_layers(in_dim: int,
     """
     Generates a module with stacked fully-connected (aka dense) layers
     """
+    if isinstance(hidden_dim, (list, tuple)) and len(hidden_dim) != num_layers:
+        raise ValueError(
+            "Number of elements in 'hidden_dim' list" + 
+            " must be equal to the number of layers")
+    if isinstance(hidden_dim, int):
+        hidden_dim = [hidden_dim for _ in range(num_layers)]
+    if isinstance(hidden_dim, tuple):
+        hidden_dim = list(hidden_dim)
+    hidden_dim = [in_dim] + hidden_dim
     fc_layers = []
-    for i in range(num_layers):
-        hidden_dim_ = in_dim if i == 0 else hidden_dim
+    for i in range(1, num_layers+1):
         fc_layers.extend(
-            [nn.Linear(hidden_dim_, hidden_dim),
+            [nn.Linear(hidden_dim[i-1], hidden_dim[i]),
              get_activation(activation)()])
     fc_layers = nn.Sequential(*fc_layers)
     return fc_layers
