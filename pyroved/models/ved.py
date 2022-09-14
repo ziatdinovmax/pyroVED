@@ -40,20 +40,10 @@ class VED(baseVAE):
             Number of latent dimensions.
         hidden_dim_e:
             Number of hidden units (convolutional filters) for each layer in
-            the first block of the encoder NN. The number of units in the
-            consecutive blocks is defined as hidden_dim_e * n,
-            where n = 2, 3, ..., n_blocks (Default: 32).
+            of the decoder NN. Defaults to [(32,), (64, 64), (128, 128)]
         hidden_dim_d:
             Number of hidden units (convolutional filters) for each layer in
-            the first block of the decoder NN. The number of units in the
-            consecutive blocks is defined as hidden_dim_e // n,
-            where n = 2, 3, ..., n_blocks (Default: 96).
-        num_layers_e:
-            List with numbers of layers per each block of the encoder NN.
-            Defaults to [1, 2, 2] if none is specified.
-        num_layers_d:
-            List with numbers of layers per each block of the decoder NN.
-            Defaults to [2, 2, 1] if none is specified.
+            of the decoder NN. Defaults to [(128, 128), (64, 64), (32,)]
         activation:
             activation:
             Non-linear activation for inner layers of encoder and decoder.
@@ -91,10 +81,8 @@ class VED(baseVAE):
                  input_channels: int = 1,
                  output_channels: int = 1,
                  latent_dim: int = 2,
-                 hidden_dim_e: int = 32,
-                 hidden_dim_d: int = 96,
-                 num_layers_e: List[int] = None,
-                 num_layers_d: List[int] = None,
+                 hidden_dim_e: List[int] = None,
+                 hidden_dim_d: List[int] = None,
                  activation: str = "lrelu",
                  batchnorm: bool = False,
                  sampler_d: str = "bernoulli",
@@ -111,13 +99,11 @@ class VED(baseVAE):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.ndim = len(output_dim)
         self.encoder_z = convEncoderNet(
-            input_dim, input_channels, latent_dim,
-            num_layers_e, hidden_dim_e,
-            batchnorm, activation)
+            input_dim, latent_dim, input_channels,
+            hidden_dim_e, batchnorm, activation)
         self.decoder = convDecoderNet(
             latent_dim, output_dim, output_channels,
-            num_layers_d, hidden_dim_d,
-            batchnorm, activation, sigmoid_d)
+            hidden_dim_d, batchnorm, activation, sigmoid_d)
         self.sampler_d = get_sampler(sampler_d, **kwargs)
         self.z_dim = latent_dim
         self.to(self.device)
@@ -171,7 +157,7 @@ class VED(baseVAE):
 
         Args:
             x_new:
-                Data to encode with a trained trVAE. The new data must have
+                Data to encode with a trained VED. The new data must have
                 the same dimensions (images height and width or spectra length)
                 as the one used for training.
             kwargs:

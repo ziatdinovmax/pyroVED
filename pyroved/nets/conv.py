@@ -27,27 +27,28 @@ class convEncoderNet(nn.Module):
     """
     def __init__(self,
                  input_dim: Tuple[int],
-                 input_channels: int = 1,
                  latent_dim: int = 2,
-                 layers_per_block: List[int] = None,
-                 hidden_dim: int = 32,
-                 batchnorm: bool = True,
+                 input_channels: int = 1,
+                 hidden_dim: List[int] = None,
+                 batchnorm: bool = False,
                  activation: str = "lrelu",
                  softplus_out: bool = True,
-                 pool: bool = True,
+                 pool_last: bool = False,
                  ) -> None:
         """
         Initializes encoder module
         """
         super(convEncoderNet, self).__init__()
-        if layers_per_block is None:
-            layers_per_block = [1, 2, 2]
-        output_dim = (tt(input_dim) // 2**len(layers_per_block)).tolist()
-        output_channels = hidden_dim * len(layers_per_block)
+        if hidden_dim is None:
+            hidden_dim = [(32,), (64, 64), (128, 128)]
+        dim_denom = 2**len(hidden_dim) if pool_last else 2**(len(hidden_dim) - 1)
+        output_dim = torch.div(tt(input_dim), dim_denom).int().tolist()
+        output_channels = hidden_dim[-1][-1]
         self.latent_dim = latent_dim
         self.feature_extractor = FeatureExtractor(
-            len(input_dim), input_channels, layers_per_block, hidden_dim,
-            batchnorm, activation, pool)
+            len(input_dim), input_channels, hidden_dim,
+            batchnorm=batchnorm, activation=activation,
+            pool_last=pool_last)
         self.features2latent = features_to_latent(
             [output_channels, *output_dim], 2*latent_dim)
         self.activation_out = nn.Softplus() if softplus_out else lambda x: x
@@ -71,9 +72,8 @@ class convDecoderNet(nn.Module):
                  latent_dim: int,
                  output_dim: int,
                  output_channels: int = 1,
-                 layers_per_block: List[int] = None,
-                 hidden_dim: int = 96,
-                 batchnorm: bool = True,
+                 hidden_dim: List[int] = None,
+                 batchnorm: bool = False,
                  activation: str = "lrelu",
                  sigmoid_out: bool = True,
                  upsampling_mode: str = "bilinear",
@@ -82,14 +82,15 @@ class convDecoderNet(nn.Module):
         Initializes decoder module
         """
         super(convDecoderNet, self).__init__()
-        if layers_per_block is None:
-            layers_per_block = [2, 2, 1]
-        input_dim = (tt(output_dim) // 2**len(layers_per_block)).tolist()
+        if hidden_dim is None:
+            hidden_dim = [(128, 128), (64, 64), (32,)]
+        input_dim = torch.div(tt(output_dim), 2**len(hidden_dim)).int().tolist()
         self.latent2features = latent_to_features(
-            latent_dim, [hidden_dim, *input_dim])
+            latent_dim, [hidden_dim[0][0], *input_dim])
         self.upsampler = Upsampler(
-            len(output_dim), hidden_dim, layers_per_block, output_channels,
-            batchnorm, activation, upsampling_mode)
+            len(output_dim), hidden_dim[0][0], hidden_dim, output_channels,
+            batchnorm=batchnorm, activation=activation,
+            upsampling_mode=upsampling_mode)
         self.activation_out = nn.Sigmoid() if sigmoid_out else lambda x: x
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -99,51 +100,6 @@ class convDecoderNet(nn.Module):
         x = self.latent2features(x)
         x = self.activation_out(self.upsampler(x))
         return x
-
-
-class ConvBlock(nn.Module):
-    """
-    Creates a block of layers each consisting of convolution operation,
-    (optional) nonlinear activation and (optional) batch normalization
-    """
-    def __init__(self,
-                 ndim: int,
-                 nlayers: int,
-                 input_channels: int,
-                 output_channels: int,
-                 kernel_size: Union[Tuple[int], int] = 3,
-                 stride: Union[Tuple[int], int] = 1,
-                 padding: Union[Tuple[int], int] = 1,
-                 batchnorm: bool = False,
-                 activation: str = "lrelu",
-                 pool: bool = False,
-                 ) -> None:
-        """
-        Initializes module parameters
-        """
-        super(ConvBlock, self).__init__()
-        if not 0 < ndim < 4:
-            raise AssertionError("ndim must be equal to 1, 2 or 3")
-        activation = get_activation(activation)
-        block = []
-        for i in range(nlayers):
-            input_channels = output_channels if i > 0 else input_channels
-            block.append(get_conv(ndim)(input_channels, output_channels,
-                         kernel_size=kernel_size, stride=stride, padding=padding))
-            if activation is not None:
-                block.append(activation())
-            if batchnorm:
-                block.append(get_bnorm(ndim)(output_channels))
-        if pool:
-            block.append(get_maxpool(ndim)(2, 2))
-        self.block = nn.Sequential(*block)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Defines a forward pass
-        """
-        output = self.block(x)
-        return output
 
 
 class UpsampleBlock(nn.Module):
@@ -194,24 +150,50 @@ class FeatureExtractor(nn.Sequential):
     def __init__(self,
                  ndim: int,
                  input_channels: int = 1,
-                 layers_per_block: List[int] = None,
-                 nfilters: int = 32,
-                 batchnorm: bool = True,
+                 conv_filters: List[int] = None,
+                 kernel_size: Union[Tuple[int], int] = 3,
+                 stride: Union[Tuple[int], int] = 1,
+                 padding: Union[Tuple[int], int] = 1,
+                 batchnorm: bool = False,
                  activation: str = "lrelu",
-                 pool: bool = True,
+                 pool_last: bool = True,
                  ) -> None:
         """
         Initializes feature extractor module
         """
         super(FeatureExtractor, self).__init__()
-        if layers_per_block is None:
-            layers_per_block = [1, 2, 2]
-        for i, layers in enumerate(layers_per_block):
-            in_filters = input_channels if i == 0 else nfilters * i
-            block = ConvBlock(ndim, layers, in_filters, nfilters * (i+1),
-                              batchnorm=batchnorm, activation=activation,
-                              pool=pool)
-            self.add_module("c{}".format(i), block)
+        if not 0 < ndim < 4:
+            raise AssertionError("ndim must be equal to 1, 2 or 3")
+        if conv_filters is None:
+            conv_filters = [(32,), (64, 64), (128, 128)]
+        activation = get_activation(activation)
+        all_layers = []
+        j = 0
+        for i, cblock in enumerate(conv_filters):
+            for ch in cblock:
+                if i == j == 0:
+                    ch_in = input_channels
+                else:
+                    for l in all_layers[::-1]:
+                        if hasattr(l, "out_channels"):
+                            ch_in = l.out_channels
+                            break
+                all_layers.append(
+                    get_conv(ndim)(ch_in, ch, kernel_size, stride, padding))  
+                if activation is not None:
+                    all_layers.append(activation())
+                if batchnorm:
+                    all_layers.append(get_bnorm(ndim)(ch))
+                j += 1
+            if j + 1 < sum([len(c) for c in conv_filters]):
+                all_layers.append(get_maxpool(ndim)(2, 2))
+            else:
+                if pool_last:
+                    all_layers.append(get_maxpool(ndim)(2, 2))
+        self.layers = nn.Sequential(*all_layers)
+        
+    def forward(self, x: torch.Tensor):
+        return self.layers(x)
 
 
 class Upsampler(nn.Sequential):
@@ -220,10 +202,13 @@ class Upsampler(nn.Sequential):
     """
     def __init__(self,
                  ndim: int,
-                 input_channels: int = 96,
-                 layers_per_block: List[int] = None,
+                 input_channels: int = 128,
+                 conv_filters: List[int] = None,
                  output_channels: int = 1,
-                 batchnorm: bool = True,
+                 kernel_size: Union[Tuple[int], int] = 3,
+                 stride: Union[Tuple[int], int] = 1,
+                 padding: Union[Tuple[int], int] = 1,
+                 batchnorm: bool = False,
                  activation: str = "lrelu",
                  upsampling_mode: str = "bilinear",
                  ) -> None:
@@ -231,24 +216,38 @@ class Upsampler(nn.Sequential):
         Initializes upsampler module
         """
         super(Upsampler, self).__init__()
-        if layers_per_block is None:
-            layers_per_block = [2, 2, 1]
+        if not 0 < ndim < 4:
+            raise AssertionError("ndim must be equal to 1, 2 or 3")
+        if conv_filters is None:
+            conv_filters = [(128, 128), (64, 64), (32,)]
+        activation = get_activation(activation)
+        all_layers = []
+        j = 0
+        for i, cblock in enumerate(conv_filters):
+            for ch in cblock:
+                if i == j == 0:
+                    ch_in = input_channels
+                else:
+                    for l in all_layers[::-1]:
+                        if hasattr(l, "out_channels"):
+                            ch_in = l.out_channels
+                            break
+                all_layers.append(
+                    get_conv(ndim)(ch_in, ch, kernel_size, stride, padding))  
+                if activation is not None:
+                    all_layers.append(activation())
+                if batchnorm:
+                    all_layers.append(get_bnorm(ndim)(ch))
+                j += 1
+            all_layers.append(
+                UpsampleBlock(ndim, ch, ch, mode=upsampling_mode))
+        all_layers.append(
+            get_conv(ndim)(ch, output_channels, 1, 1, 0))
+        self.layers = nn.Sequential(*all_layers)
 
-        nfilters = input_channels
-        for i, layers in enumerate(layers_per_block):
-            in_filters = nfilters if i == 0 else nfilters // i
-            block = ConvBlock(ndim, layers, in_filters, nfilters // (i+1),
-                              batchnorm=batchnorm, activation=activation,
-                              pool=False)
-            self.add_module("conv_block_{}".format(i), block)
-            up = UpsampleBlock(ndim, nfilters // (i+1), nfilters // (i+1),
-                               mode=upsampling_mode)
-            self.add_module("up_{}".format(i), up)
-
-        out = ConvBlock(ndim, 1, nfilters // (i+1), output_channels,
-                        1, 1, 0, activation=None)
-        self.add_module("output_layer", out)
-
+    def forward(self, x: torch.Tensor):
+        return self.layers(x)
+            
 
 class features_to_latent(nn.Module):
     """
