@@ -14,7 +14,7 @@ def grid2xy(X1: torch.Tensor, X2: torch.Tensor) -> torch.Tensor:
 def imcoordgrid(im_dim: Tuple[int]) -> torch.Tensor:
     xx = torch.linspace(-1, 1, im_dim[0])
     yy = torch.linspace(1, -1, im_dim[1])
-    x0, x1 = torch.meshgrid(xx, yy)
+    x0, x1 = torch.meshgrid(xx, yy, indexing='ij')
     return grid2xy(x0, x1)
 
 
