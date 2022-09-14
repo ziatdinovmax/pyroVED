@@ -176,7 +176,7 @@ class ss_reg_iVAE(baseVAE):
             d_args = (x_coord_prime, [zs, ys]) if self.coord else ([zs, ys],)
             loc = self.decoder(*d_args)
             loc = loc.view(*ys.shape[:-1], -1)
-            pyro.sample("x", self.sampler_d(loc).to_event(1), obs=xs)
+            pyro.sample("x", self.sampler_d(loc).to_event(1), obs=xs.flatten(1))
 
     def guide(self, xs: torch.Tensor,
               ys: Optional[torch.Tensor] = None,
