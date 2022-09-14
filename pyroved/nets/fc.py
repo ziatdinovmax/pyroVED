@@ -35,6 +35,7 @@ class Concat(nn.Module):
         """
         if torch.is_tensor(input_args):
             return input_args
+        input_args = [a.flatten(1) if a.ndim >= 4 else a for a in input_args]
         if self.allow_broadcast:
             shape = broadcast_shape(*[s.shape[:-1] for s in input_args]) + (-1,)
             input_args = [s.expand(shape) for s in input_args]
@@ -291,6 +292,7 @@ class fcClassifierNet(nn.Module):
         """
         Forward pass
         """
+        x = x.view(-1, self.in_dim)
         x = self.fc_layers(x)
         x = self.out(x)
         return torch.softmax(x, dim=-1)
@@ -324,6 +326,7 @@ class fcRegressorNet(nn.Module):
         """
         Forward pass
         """
+        x = x.view(-1, self.in_dim)
         x = self.fc_layers(x)
         return self.out(x)
 
