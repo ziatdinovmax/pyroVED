@@ -86,14 +86,14 @@ class ss_reg_iVAE(baseVAE):
     Initialize a VAE model with rotational invariance for
     a semi-supervised single-output regression.
 
-    >>> # Get dataloaders
-    >>> loader_unlabeled, loader_labeled, loader_val = pv.utils.init_ssvae_dataloaders(
-    >>>     X_unlabeled, (X_labeled, y_labels), (X_val, y_val))
     >>> # Initialize ssVAE
     >>> data_dim = (28, 28)
     >>> ssvae = ss_reg_iVAE(data_dim, latent_dim=2, reg_dim=1, invariances=['r'])
     >>> # Initialize SVI trainer for regression
     >>> trainer = pv.trainers.auxSVItrainer(ssvae, task='regression')
+    >>> # Get dataloaders
+    >>> loader_unlabeled, loader_labeled, loader_val = pv.utils.init_ssvae_dataloaders(
+    >>>     X_unlabeled, (X_labeled, y_labels), (X_val, y_val))
     >>> # Train for 100 epochs:
     >>> for e in range(100):
     >>>     trainer.step(loader_unlabeled, loader_labeled, loader_val, aux_loss_multiplier=200)

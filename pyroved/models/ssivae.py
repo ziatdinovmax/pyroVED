@@ -3,7 +3,7 @@ ssivae.py
 =========
 
 Semi-supervised variational autoencoder for data
-with orientational, positional and scale disorders
+with rotational, positional and scale disorders
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
@@ -87,8 +87,21 @@ class ssiVAE(baseVAE):
     Initialize a VAE model with rotational invariance for
     semi-supervised learning of the dataset that has 10 classes
 
+    >>> # Initialize ssVAE
     >>> data_dim = (28, 28)
     >>> ssvae = ssiVAE(data_dim, latent_dim=2, num_classes=10, invariances=['r'])
+    >>> # Initialize auxillary-SVI trainer
+    >>> trainer = pv.trainers.auxSVItrainer(ssvae, task='classification')
+    >>> # Get dataloaders
+    >>> loader_unlabeled, loader_labeled, loader_val = pv.utils.init_ssvae_dataloaders(
+    >>>     X_unlabeled, (X_labeled, y_labels), (X_val, y_val))
+    >>> # Train for 100 epochs:
+    >>> for e in range(100):
+    >>>     trainer.step(loader_unlabeled, loader_labeled, loader_val, aux_loss_multiplier=50)
+    >>>     trainer.print_statistics()
+    >>> # Plot traversals of the learned latent manifolds
+    >>> for i in range(2):
+    >>>     ssvae.manifold_traversal(8, i, cmap='viridis')
     """
     def __init__(self,
                  data_dim: Tuple[int],
@@ -355,7 +368,7 @@ class ssiVAE(baseVAE):
                 Keyword arguments include custom min/max values for grid
                 boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3]),
                 'angle' and 'shift' to condition a generative model one,
-                and plot parameters ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
+                and plot parameters ('padding', 'pad_value', 'cmap', 'origin', 'ylim')
         """
         num_samples = d**2
         disc_dim = self.num_classes
