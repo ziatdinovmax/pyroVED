@@ -3,7 +3,7 @@ ss_reg_ivae.py
 ==============
 
 Variational autoencoder for semi-supervised regression
-with an option to enforce orientational, positional and scale
+with an option to enforce rotational, positional and scale
 invariances
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
@@ -43,17 +43,14 @@ class ss_reg_iVAE(baseVAE):
             For 1D systems, 't' enforces translational invariance and
             invariances=None is vanilla VAE
         hidden_dim_e:
-            Number of hidden units per each layer in encoder (inference network).
+            List with the number of hidden units in each layer
+            of encoder (inference network). Defautls to [128, 128].
         hidden_dim_d:
-            Number of hidden units per each layer in decoder (generator network).
-        hidden_dim_cls:
-            Number of hidden units ("neurons") in each layer of classifier
-        num_layers_e:
-            Number of layers in encoder (inference network).
-        num_layers_d:
-            Number of layers in decoder (generator network).
-        num_layers_cls:
-            Number of layers in classifier
+            List with the number of hidden units in each layer
+            of decoder (generator network). Defaults to [128, 128].
+        hidden_dim_reg:
+            List with the number of hidden units in each layer of regression NN.
+            Defaults to [128, 128].
         activation:
             Non-linear activation for inner layers of both encoder and the decoder.
             The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
@@ -89,20 +86,31 @@ class ss_reg_iVAE(baseVAE):
     Initialize a VAE model with rotational invariance for
     a semi-supervised single-output regression.
 
+    >>> # Initialize ssVAE
     >>> data_dim = (28, 28)
     >>> ssvae = ss_reg_iVAE(data_dim, latent_dim=2, reg_dim=1, invariances=['r'])
+    >>> # Initialize SVI trainer for regression
+    >>> trainer = pv.trainers.auxSVItrainer(ssvae, task='regression')
+    >>> # Get dataloaders
+    >>> loader_unlabeled, loader_labeled, loader_val = pv.utils.init_ssvae_dataloaders(
+    >>>     X_unlabeled, (X_labeled, y_labels), (X_val, y_val))
+    >>> # Train for 100 epochs:
+    >>> for e in range(100):
+    >>>     trainer.step(loader_unlabeled, loader_labeled, loader_val, aux_loss_multiplier=200)
+    >>>     trainer.print_statistics()
+    >>>     if e > 80:  # save running weights of the regression NN at the end of training trajectory
+    >>>         trainer.save_running_weights("encoder_y")
+    >>> # average saved weights for the regression NN (to improve prediction accuracy)
+    >>> trainer.average_weights("encoder_y")
     """
     def __init__(self,
                  data_dim: Tuple[int],
                  latent_dim: int,
                  reg_dim: int,
                  invariances: List[str] = None,
-                 hidden_dim_e: int = 128,
-                 hidden_dim_d: int = 128,
-                 hidden_dim_cls: int = 128,
-                 num_layers_e: int = 2,
-                 num_layers_d: int = 2,
-                 num_layers_cls: int = 2,
+                 hidden_dim_e: List[int] = None,
+                 hidden_dim_d: List[int] = None,
+                 hidden_dim_reg: List[int] = None,
                  activation: str = "tanh",
                  sampler_d: str = "bernoulli",
                  sigmoid_d: bool = True,
@@ -122,19 +130,17 @@ class ss_reg_iVAE(baseVAE):
         # Initialize z-Encoder neural network
         self.encoder_z = fcEncoderNet(
             data_dim, latent_dim+self.coord, reg_dim,
-            hidden_dim_e, num_layers_e, activation, flat=False)
+            hidden_dim_e, activation, flat=False)
 
         # Initialize y-Encoder neural network
         self.encoder_y = fcRegressorNet(
-            data_dim, reg_dim, hidden_dim_cls, num_layers_cls,
-            activation)
+            data_dim, reg_dim, hidden_dim_reg, activation)
 
         # Initializes Decoder neural network
         dnet = sDecoderNet if 0 < self.coord < 5 else fcDecoderNet
         self.decoder = dnet(
             data_dim, latent_dim, reg_dim, hidden_dim_d,
-            num_layers_d, activation, sigmoid_out=sigmoid_d,
-            unflat=False)
+            activation, sigmoid_out=sigmoid_d, unflat=False)
         self.sampler_d = get_sampler(sampler_d, **kwargs)
 
         # Set sigma for regression sampler
@@ -184,7 +190,7 @@ class ss_reg_iVAE(baseVAE):
             d_args = (x_coord_prime, [zs, ys]) if self.coord else ([zs, ys],)
             loc = self.decoder(*d_args)
             loc = loc.view(*ys.shape[:-1], -1)
-            pyro.sample("x", self.sampler_d(loc).to_event(1), obs=xs)
+            pyro.sample("x", self.sampler_d(loc).to_event(1), obs=xs.flatten(1))
 
     def guide(self, xs: torch.Tensor,
               ys: Optional[torch.Tensor] = None,
@@ -199,7 +205,7 @@ class ss_reg_iVAE(baseVAE):
             if ys is None:
                 c = self.encoder_y(xs)
                 ys = pyro.sample("y", dist.Normal(c, self.reg_sig).to_event(1))
-            # sample (and score) the latent vector with the variational
+            # sample and score the latent vector with the variational
             # distribution q(z|x,y) = normal(loc(x,y),scale(x,y))
             loc, scale = self.encoder_z([xs, ys])
             with pyro.poutine.scale(scale=beta):
@@ -276,7 +282,9 @@ class ss_reg_iVAE(baseVAE):
                y: Optional[torch.Tensor] = None,
                **kwargs: int) -> torch.Tensor:
         """
-        Encodes data using a trained inference (encoder) network
+        Encodes data using a trained inference (encoder) network. The output is
+        a tuple with mean and standard deviations of the encoded distributions and
+        a predicted continuous variable value.
 
         Args:
             x_new:
@@ -291,13 +299,13 @@ class ss_reg_iVAE(baseVAE):
         """
         if y is None:
             y = self.regressor(x_new, **kwargs)
-        z = self._encode(x_new, y, **kwargs)
+        z = self._encode(x_new.flatten(1), y, **kwargs)
         z_loc, z_scale = z.split(self.z_dim, 1)
         return z_loc, z_scale, y
 
     def decode(self, z: torch.Tensor, y: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
-        Decodes a batch of latent coordinates
+        Decodes a batch of latent coordinates using a trained generator (decoder) network
 
         Args:
             z: Latent coordinates (without rotational and translational parts)
@@ -311,7 +319,7 @@ class ss_reg_iVAE(baseVAE):
     def manifold2d(self, d: int, y: torch.Tensor, plot: bool = True,
                    **kwargs: Union[str, int, float]) -> torch.Tensor:
         """
-        Returns a learned latent manifold in the image space
+        Returns a learned latent manifold in the data space
 
         Args:
             d: Grid size
@@ -321,7 +329,7 @@ class ss_reg_iVAE(baseVAE):
                     for grid boundaries passed as 'z_coord'
                     (e.g. z_coord = [-3, 3, -3, 3]), 'angle' and
                     'shift' to condition a generative model on, and plot parameters
-                    ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
+                    ('padding', 'pad_value', 'cmap', 'origin', 'ylim')
         """
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
         y = y.unsqueeze(1) if 0 < y.ndim < 2 else y

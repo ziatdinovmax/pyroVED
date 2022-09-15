@@ -40,20 +40,10 @@ class VED(baseVAE):
             Number of latent dimensions.
         hidden_dim_e:
             Number of hidden units (convolutional filters) for each layer in
-            the first block of the encoder NN. The number of units in the
-            consecutive blocks is defined as hidden_dim_e * n,
-            where n = 2, 3, ..., n_blocks (Default: 32).
+            of the decoder NN. Defaults to [(32,), (64, 64), (128, 128)]
         hidden_dim_d:
             Number of hidden units (convolutional filters) for each layer in
-            the first block of the decoder NN. The number of units in the
-            consecutive blocks is defined as hidden_dim_e // n,
-            where n = 2, 3, ..., n_blocks (Default: 96).
-        num_layers_e:
-            List with numbers of layers per each block of the encoder NN.
-            Defaults to [1, 2, 2] if none is specified.
-        num_layers_d:
-            List with numbers of layers per each block of the decoder NN.
-            Defaults to [2, 2, 1] if none is specified.
+            of the decoder NN. Defaults to [(128, 128), (64, 64), (32,)]
         activation:
             activation:
             Non-linear activation for inner layers of encoder and decoder.
@@ -81,9 +71,20 @@ class VED(baseVAE):
 
     Initialize a VED model for predicting 1D spectra from 2D images
 
+    >>> # Initialize model
     >>> input_dim = (32, 32) # image height and width
-    >>> output_dim = (16,) # spectrum length
+    >>> output_dim = (1000,) # spectrum length
     >>> ved = VED(input_dim, output_dim, latent_dim=2)
+    >>> # Initialize trainer
+    >>> trainer = pv.trainers.SVItrainer(ved)
+    >>> # Train for 100 epochs
+    >>> for _ in range(100):
+    >>>     trainer.step(train_loader)
+    >>>     trainer.print_statistics()
+    >>> # Visualize the learned latent manifold
+    >>> ved.manifold2d(d=6, ylim=[0., .8], cmap='viridis');
+    >>> # Make a prediction (image -> spectrum) on new data
+    >>> pred_mean, pred_sd = ved.predict(new_inputs)
     """
     def __init__(self,
                  input_dim: Tuple[int],
@@ -91,10 +92,8 @@ class VED(baseVAE):
                  input_channels: int = 1,
                  output_channels: int = 1,
                  latent_dim: int = 2,
-                 hidden_dim_e: int = 32,
-                 hidden_dim_d: int = 96,
-                 num_layers_e: List[int] = None,
-                 num_layers_d: List[int] = None,
+                 hidden_dim_e: List[int] = None,
+                 hidden_dim_d: List[int] = None,
                  activation: str = "lrelu",
                  batchnorm: bool = False,
                  sampler_d: str = "bernoulli",
@@ -111,13 +110,11 @@ class VED(baseVAE):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.ndim = len(output_dim)
         self.encoder_z = convEncoderNet(
-            input_dim, input_channels, latent_dim,
-            num_layers_e, hidden_dim_e,
-            batchnorm, activation)
+            input_dim, latent_dim, input_channels,
+            hidden_dim_e, batchnorm, activation)
         self.decoder = convDecoderNet(
             latent_dim, output_dim, output_channels,
-            num_layers_d, hidden_dim_d,
-            batchnorm, activation, sigmoid_d)
+            hidden_dim_d, batchnorm, activation, sigmoid_d)
         self.sampler_d = get_sampler(sampler_d, **kwargs)
         self.z_dim = latent_dim
         self.to(self.device)
@@ -167,18 +164,19 @@ class VED(baseVAE):
 
     def encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
-        Encodes data using a trained inference (encoder) network
+        Encodes data using a trained encoder network. The output is
+        a tuple with means and standard deviations of the encoded distributions.
 
         Args:
             x_new:
-                Data to encode with a trained trVAE. The new data must have
+                Data to encode with a trained VED. The new data must have
                 the same dimensions (images height and width or spectra length)
                 as the one used for training.
             kwargs:
                 Batch size as 'batch_size' (for encoding large volumes of data)
         """
         self.eval()
-        z = self._encode(x_new)
+        z = self._encode(x_new, **kwargs)
         z_loc, z_scale = z.split(self.z_dim, 1)
         return z_loc, z_scale
 
@@ -186,7 +184,8 @@ class VED(baseVAE):
                z: torch.Tensor,
                **kwargs: int) -> torch.Tensor:
         """
-        Decodes a batch of latent coordnates
+        Decodes a batch of latent coordnates into the target space using
+        a trained decoder network.
 
         Args:
             z: Latent coordinates
@@ -226,7 +225,7 @@ class VED(baseVAE):
             plot: Plots the generated manifold (Default: True)
             kwargs: Keyword arguments include custom min/max values for grid
                     boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3])
-                    and plot parameters ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
+                    and plot parameters ('padding', 'pad_value', 'cmap', 'origin', 'ylim')
         """
         self.eval()
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)

@@ -3,7 +3,7 @@ ssivae.py
 =========
 
 Semi-supervised variational autoencoder for data
-with orientational, positional and scale disorders
+with rotational, positional and scale disorders
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
@@ -15,7 +15,7 @@ import torch
 
 from .base import baseVAE
 from ..nets import fcDecoderNet, fcEncoderNet, sDecoderNet, fcClassifierNet
-from ..utils import (generate_grid, get_sampler, plot_img_grid,
+from ..utils import (get_sampler, plot_img_grid,
                      plot_spect_grid, set_deterministic_mode, to_onehot,
                      transform_coordinates, init_dataloader, generate_latent_grid,
                      generate_latent_grid_traversal, plot_grid_traversal)
@@ -46,17 +46,14 @@ class ssiVAE(baseVAE):
             For 1D systems, 't' enforces translational invariance and
             invariances=None is vanilla VAE
         hidden_dim_e:
-            Number of hidden units per each layer in encoder (inference network).
+            List with the number of hidden units in each layer
+            of encoder (inference network). Defaults to [128, 128].
         hidden_dim_d:
-            Number of hidden units per each layer in decoder (generator network).
+            List with the number of hidden units in each layer
+            of decoder (generator network). Defaults to [128, 128].
         hidden_dim_cls:
-            Number of hidden units ("neurons") in each layer of classifier
-        num_layers_e:
-            Number of layers in encoder (inference network).
-        num_layers_d:
-            Number of layers in decoder (generator network).
-        num_layers_cls:
-            Number of layers in classifier
+            List with the number of hidden units of each layer of classifier.
+            Defaults to [128, 128].
         activation:
             Non-linear activation for inner layers of both encoder and the decoder.
             The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
@@ -90,20 +87,30 @@ class ssiVAE(baseVAE):
     Initialize a VAE model with rotational invariance for
     semi-supervised learning of the dataset that has 10 classes
 
+    >>> # Initialize ssVAE
     >>> data_dim = (28, 28)
     >>> ssvae = ssiVAE(data_dim, latent_dim=2, num_classes=10, invariances=['r'])
+    >>> # Initialize auxillary-SVI trainer
+    >>> trainer = pv.trainers.auxSVItrainer(ssvae, task='classification')
+    >>> # Get dataloaders
+    >>> loader_unlabeled, loader_labeled, loader_val = pv.utils.init_ssvae_dataloaders(
+    >>>     X_unlabeled, (X_labeled, y_labels), (X_val, y_val))
+    >>> # Train for 100 epochs:
+    >>> for e in range(100):
+    >>>     trainer.step(loader_unlabeled, loader_labeled, loader_val, aux_loss_multiplier=50)
+    >>>     trainer.print_statistics()
+    >>> # Plot traversals of the learned latent manifolds
+    >>> for i in range(2):
+    >>>     ssvae.manifold_traversal(8, i, cmap='viridis')
     """
     def __init__(self,
                  data_dim: Tuple[int],
                  latent_dim: int,
                  num_classes: int,
                  invariances: List[str] = None,
-                 hidden_dim_e: int = 128,
-                 hidden_dim_d: int = 128,
-                 hidden_dim_cls: int = 128,
-                 num_layers_e: int = 2,
-                 num_layers_d: int = 2,
-                 num_layers_cls: int = 2,
+                 hidden_dim_e: List[int] = None,
+                 hidden_dim_d: List[int] = None,
+                 hidden_dim_cls: List[int] = None,
                  activation: str = "tanh",
                  sampler_d: str = "bernoulli",
                  sigmoid_d: bool = True,
@@ -123,19 +130,17 @@ class ssiVAE(baseVAE):
         # Initialize z-Encoder neural network
         self.encoder_z = fcEncoderNet(
             data_dim, latent_dim+self.coord, num_classes,
-            hidden_dim_e, num_layers_e, activation, flat=False)
+            hidden_dim_e, activation, flat=False)
 
         # Initialize y-Encoder neural network
         self.encoder_y = fcClassifierNet(
-            data_dim, num_classes, hidden_dim_cls, num_layers_cls,
-            activation)
+            data_dim, num_classes, hidden_dim_cls, activation)
 
         # Initializes Decoder neural network
         dnet = sDecoderNet if 0 < self.coord < 5 else fcDecoderNet
         self.decoder = dnet(
             data_dim, latent_dim, num_classes, hidden_dim_d,
-            num_layers_d, activation, sigmoid_out=sigmoid_d,
-            unflat=False)
+            activation, sigmoid_out=sigmoid_d, unflat=False)
         self.sampler_d = get_sampler(sampler_d, **kwargs)
 
         # Sets continuous and discrete dimensions
@@ -184,11 +189,11 @@ class ssiVAE(baseVAE):
                            self.num_classes)
             ys = pyro.sample("y", dist.OneHotCategorical(alpha_prior), obs=ys)
             # Score against the parametrized distribution
-            # p(x|y,z) = bernoulli(decoder(y,z))
+            # p(x|y,z) = bernoulli(decoder(y,z)) or p(x|y,z) = gaussian(decoder(y,z), decoder_sig)
             d_args = (x_coord_prime, [zs, ys]) if self.coord else ([zs, ys],)
             loc = self.decoder(*d_args)
             loc = loc.view(*ys.shape[:-1], -1)
-            pyro.sample("x", self.sampler_d(loc).to_event(1), obs=xs)
+            pyro.sample("x", self.sampler_d(loc).to_event(1), obs=xs.flatten(1))
 
     def guide(self, xs: torch.Tensor,
               ys: Optional[torch.Tensor] = None,
@@ -363,7 +368,7 @@ class ssiVAE(baseVAE):
                 Keyword arguments include custom min/max values for grid
                 boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3]),
                 'angle' and 'shift' to condition a generative model one,
-                and plot parameters ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
+                and plot parameters ('padding', 'pad_value', 'cmap', 'origin', 'ylim')
         """
         num_samples = d**2
         disc_dim = self.num_classes

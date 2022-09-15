@@ -2,7 +2,8 @@
 ivae.py
 =======
 
-Variational autoencoder with invariance to rotations, translations, and scale
+Variational autoencoder that enforces invariance to
+rotation, translation, and scale
 
 Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
@@ -48,17 +49,11 @@ class iVAE(baseVAE):
             the corresponding n x 10 vector should represent one-hot encoded labels.
             (The default c_dim value is 0, i.e. no conditioning is performed).
         hidden_dim_e:
-            Number of hidden units per each layer in encoder (inference
-            network). (The default is 128).
+            List with the number of hidden units per each layer in encoder (inference
+            network). Defaults to [128, 128].
         hidden_dim_d:
-            Number of hidden units per each layer in decoder (generator
-            network). (The default is 128).
-        num_layers_e:
-            Number of layers in encoder (inference network). (The default is
-            2).
-        num_layers_d:
-            Number of layers in decoder (generator network). (The default is
-            2).
+            List with the number of hidden units per each layer in decoder (generator
+            network). Defaults to [128, 128].
         activation:
             Non-linear activation for inner layers of encoder and decoder.
             The available activations are ReLU ('relu'), leaky ReLU ('lrelu'),
@@ -88,16 +83,39 @@ class iVAE(baseVAE):
             Sets sigma for a "gaussian" decoder sampler
 
     Examples:
-        Initialize a VAE model with rotational invariance
+        Example 1. Initialize and train a VAE model with rotational invariance
 
+        >>> import pyroved as pv
+        >>> # Initialize VAE model
         >>> data_dim = (28, 28)
         >>> rvae = iVAE(data_dim, latent_dim=2, invariances=['r'])
+        >>> # Create a dataloader object
+        >>> train_loader = pv.utils.init_dataloader(train_data, batch_size=200)
+        >>> # Initialize SVI trainer
+        >>> trainer = pv.trainers.SVItrainer(rvae)
+        >>> # Train for 100 epochs
+        >>> for e in range(100)
+        >>>     trainer.step(train_loader)
+        >>>     trainer.print_statistics() # print running loss
+        >>> # After training is complete, we can visualize the learned latent manifold
+        >>> rvae.manifold2d(d=12, cmap='viridis');
 
-        Initialize a class-conditional VAE model with rotational and
-        translational invarainces for dataset that has 10 classes
+        Example 2. Initialize a class-conditional VAE model with
+        rotational and translational invarainces for dataset that has 10 classes
 
         >>> data_dim = (28, 28)
         >>> rvae = iVAE(data_dim, latent_dim=2, c_dim=10, invariances=['r', 't'])
+        >>> # Create a dataloader object consisting of training images and class labels
+        >>> train_loader = pv.utils.init_dataloader(train_data, train_labels, batch_size=200)
+        >>> # Initialize SVI trainer
+        >>> trainer = pv.trainers.SVItrainer(rvae)
+        >>> # Train for 100 epochs
+        >>> for e in range(100)
+        >>>     trainer.step(train_loader)
+        >>>     trainer.print_statistics() # print running loss
+        >>> # Visualize the learned latent manifold for a specific class
+        >>> cls = pv.utils.to_onehot(torch.tensor([5,]), 10)
+        >>> rvae.manifold2d(d=12, cls, cmap='viridis');
     """
 
     def __init__(
@@ -106,10 +124,8 @@ class iVAE(baseVAE):
         latent_dim: int = 2,
         invariances: List[str] = None,
         c_dim: int = 0,
-        hidden_dim_e: int = 128,
-        hidden_dim_d: int = 128,
-        num_layers_e: int = 2,
-        num_layers_d: int = 2,
+        hidden_dim_e: List[int] = None,
+        hidden_dim_d: List[int] = None,
         activation: str = "tanh",
         sampler_d: str = "bernoulli",
         sigmoid_d: bool = True,
@@ -126,13 +142,13 @@ class iVAE(baseVAE):
 
         # Initialize the encoder network
         self.encoder_z = fcEncoderNet(
-            data_dim, latent_dim + self.coord, 0, hidden_dim_e, num_layers_e,
+            data_dim, latent_dim + self.coord, c_dim, hidden_dim_e,
             activation, softplus_out=True
         )
         # Initialize the decoder network
         dnet = sDecoderNet if 0 < self.coord < 5 else fcDecoderNet
         self.decoder = dnet(
-            data_dim, latent_dim, c_dim, hidden_dim_d, num_layers_d,
+            data_dim, latent_dim, c_dim, hidden_dim_d,
             activation, sigmoid_out=sigmoid_d
         )
         # Initialize the decoder's sampler
@@ -150,7 +166,7 @@ class iVAE(baseVAE):
               y: Optional[torch.Tensor] = None,
               **kwargs: float) -> None:
         """
-        Defines the model p(x|z)p(z)
+        Defines the model p(x|z)p(z) (or p(x|z,y) if y is not None)
         """
         # register PyTorch module `decoder` with Pyro
         pyro.module("decoder", self.decoder)
@@ -189,7 +205,7 @@ class iVAE(baseVAE):
               y: Optional[torch.Tensor] = None,
               **kwargs: float) -> None:
         """
-        Defines the guide q(z|x)
+        Defines the guide q(z|x) (or q(z|x,y) if y is not None)
         """
         # register PyTorch module `encoder_z` with Pyro
         pyro.module("encoder_z", self.encoder_z)
@@ -197,31 +213,44 @@ class iVAE(baseVAE):
         beta = kwargs.get("scale_factor", 1.)
         with pyro.plate("data", x.shape[0]):
             # use the encoder to get the parameters used to define q(z|x)
-            z_loc, z_scale = self.encoder_z(x)
+            enc_args = [x, y] if y is not None else x
+            z_loc, z_scale = self.encoder_z(enc_args)
             # sample the latent code z
             with pyro.poutine.scale(scale=beta):
                 pyro.sample("latent", dist.Normal(z_loc, z_scale).to_event(1))
 
     def split_latent(self, z: torch.Tensor) -> Tuple[torch.Tensor]:
         """
-        Split latent variable into parts for rotation
-        and/or translation and image content
+        Split latent variable into parts associated with coordinate transformations
+        (rotation and/or transaltion and/or scale) and image content.
         """
         return self._split_latent(z)
 
-    def encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
+    def encode(self,
+               x_new: torch.Tensor,
+               y: torch.Tensor = None,
+               **kwargs: int) -> torch.Tensor:
         """
-        Encodes data using a trained inference (encoder) network
+        Encodes data using a trained inference (encoder) network. The output is
+        a tuple with means and standard deviations of the encoded distributions.
+        The last n dimensions of the produced latent vectors, z[-n:], correspond
+        to "conventional" n latent variables specified at the model initialization stage
+        as 'latent_dim'. The remaining dimensions, z[:-n], correspond to "special"
+        latent variables (if any) associated with transformations of image/spectrum
+        coordinates and start with rotation, followed by dx and dy
+        translations, and scale.
 
         Args:
             x_new:
                 Data to encode with a trained (i)VAE model. The new data must have
                 the same dimensions (images height and width or spectra length)
                 as the one used for training.
+            y: Conditional "property" vector (e.g. one-hot encoded classes)
             kwargs:
                 Batch size as 'batch_size' (for encoding large volumes of data)
         """
-        z = self._encode(x_new)
+        enc_args = torch.cat([x_new.flatten(1), y], -1) if y is not None else x_new
+        z = self._encode(enc_args, **kwargs)
         z_loc, z_scale = z.split(self.z_dim, 1)
         return z_loc, z_scale
 
@@ -230,7 +259,8 @@ class iVAE(baseVAE):
                y: torch.Tensor = None,
                **kwargs: int) -> torch.Tensor:
         """
-        Decodes a batch of latent coordnates
+        Decodes a batch of latent coordinates into the data space using a trained
+        generator (decoder) network.
 
         Args:
             z: Latent coordinates (without rotational and translational parts)
@@ -248,7 +278,7 @@ class iVAE(baseVAE):
                    plot: bool = True,
                    **kwargs: Union[str, int, float]) -> torch.Tensor:
         """
-        Plots a learned latent manifold in the image space
+        Plots a learned latent manifold in the data space
 
         Args:
             d: Grid size
@@ -258,7 +288,7 @@ class iVAE(baseVAE):
                     for grid boundaries passed as 'z_coord'
                     (e.g. z_coord = [-3, 3, -3, 3]), 'angle' and
                     'shift' to condition a generative model on, and plot parameters
-                    ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
+                    ('padding', 'pad_value', 'cmap', 'origin', 'ylim')
         """
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
         z = [z]
