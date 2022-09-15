@@ -71,9 +71,20 @@ class VED(baseVAE):
 
     Initialize a VED model for predicting 1D spectra from 2D images
 
+    >>> # Initialize model
     >>> input_dim = (32, 32) # image height and width
-    >>> output_dim = (16,) # spectrum length
+    >>> output_dim = (1000,) # spectrum length
     >>> ved = VED(input_dim, output_dim, latent_dim=2)
+    >>> # Initialize trainer
+    >>> trainer = pv.trainers.SVItrainer(ved)
+    >>> # Train for 100 epochs
+    >>> for _ in range(100):
+    >>>     trainer.step(train_loader)
+    >>>     trainer.print_statistics()
+    >>> # Visualize the learned latent manifold
+    >>> ved.manifold2d(d=6, ylim=[0., .8], cmap='viridis');
+    >>> # Make a prediction (image -> spectrum) on new data
+    >>> pred_mean, pred_sd = ved.predict(new_inputs)
     """
     def __init__(self,
                  input_dim: Tuple[int],
@@ -153,7 +164,8 @@ class VED(baseVAE):
 
     def encode(self, x_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
-        Encodes data using a trained inference (encoder) network
+        Encodes data using a trained encoder network. The output is
+        a tuple with means and standard deviations of the encoded distributions.
 
         Args:
             x_new:
@@ -164,7 +176,7 @@ class VED(baseVAE):
                 Batch size as 'batch_size' (for encoding large volumes of data)
         """
         self.eval()
-        z = self._encode(x_new)
+        z = self._encode(x_new, **kwargs)
         z_loc, z_scale = z.split(self.z_dim, 1)
         return z_loc, z_scale
 
@@ -172,7 +184,8 @@ class VED(baseVAE):
                z: torch.Tensor,
                **kwargs: int) -> torch.Tensor:
         """
-        Decodes a batch of latent coordnates
+        Decodes a batch of latent coordnates into the target space using
+        a trained decoder network.
 
         Args:
             z: Latent coordinates
@@ -212,7 +225,7 @@ class VED(baseVAE):
             plot: Plots the generated manifold (Default: True)
             kwargs: Keyword arguments include custom min/max values for grid
                     boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3])
-                    and plot parameters ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
+                    and plot parameters ('padding', 'pad_value', 'cmap', 'origin', 'ylim')
         """
         self.eval()
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
