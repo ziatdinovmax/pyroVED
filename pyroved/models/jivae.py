@@ -81,10 +81,29 @@ class jiVAE(baseVAE):
 
     Examples:
 
-    Initialize a joint VAE model with rotational invariance for 10 discrete classes
+    Initialize and train a joint VAE model with rotational invariance for 10 discrete classes
 
+    >>> import torch
+    >>> import pyroved as pv
+    >>> # initialize joint rVAE model
     >>> data_dim = (28, 28)
     >>> jrvae = jiVAE(data_dim, latent_dim=2, discrete_dim=10, invariances=['r'])
+    >>> # Initialize trainer (in pyroVED, we use parallel enumeration instead of Gumbel-Softmax approximation)
+    >>> trainer = pv.trainers.SVItrainer(jvae, lr=1e-3, enumerate_parallel=True)
+    >>> # Use "time"-dependent KL scale factor for continuous latent variables
+    >>> kl_scale = torch.cat(  
+    >>>    [torch.ones(10,) * 40,  # put pressure on the continuous latent channel at the beginning
+    >>>     torch.linspace(40, 3, 40)]  # gradually release the pressure
+    >>> ) 
+    >>> # Train the model
+    >>> for e in range(200):
+    >>>     sc = kl_scale[e] if e < len(kl_scale) else kl_scale[-1]
+    >>>     trainer.step(train_loader, scale_factor=[sc, 3])  # [continuous, discrete] KL scale factors
+    >>>     trainer.print_statistics()
+    >>>     # Plot the traversal of the latent manifold learned so far
+    >>>     if (e + 1) % 10 == 0:
+    >>>         for i in range(2):
+    >>>             jvae.manifold_traversal(10, i, cmap='viridis'); 
     """
 
     def __init__(self,
@@ -202,7 +221,7 @@ class jiVAE(baseVAE):
 
     def split_latent(self, z: torch.Tensor) -> Tuple[torch.Tensor]:
         """
-        Split latent variable into parts with rotation and/or translation
+        Split latent variable into parts with coordinates transformations
         and image content
         """
         return self._split_latent(z)
@@ -212,7 +231,9 @@ class jiVAE(baseVAE):
                logits: bool = False,
                **kwargs: int) -> torch.Tensor:
         """
-        Encodes data using a trained inference (encoder) network
+        Encodes data using a trained inference (encoder) network.
+        The output is a tuple with mean and standard deviations of
+        encoded distributions and a predicted class.
 
         Args:
             x_new:
@@ -234,7 +255,7 @@ class jiVAE(baseVAE):
 
     def decode(self, z: torch.Tensor, y: torch.Tensor, **kwargs: int) -> torch.Tensor:
         """
-        Decodes a batch of latent coordinates
+        Decodes a batch of latent coordinates using a trained generator (decoder) network.
 
         Args:
             z: Latent coordinates (without rotational and translational parts)
@@ -256,7 +277,7 @@ class jiVAE(baseVAE):
             kwargs: Keyword arguments include custom min/max values for grid
                     boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3]),
                     'angle' and 'shift' to condition a generative model on,
-                    and plot parameters ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
+                    and plot parameters ('padding', 'pad_value', 'cmap', 'origin', 'ylim')
         """
         z, (grid_x, grid_y) = generate_latent_grid(d, **kwargs)
         z_disc = to_onehot(tt(disc_idx).unsqueeze(0), self.discrete_dim)
@@ -292,7 +313,7 @@ class jiVAE(baseVAE):
                 Keyword arguments include custom min/max values for grid
                 boundaries passed as 'z_coord' (e.g. z_coord = [-3, 3, -3, 3]),
                 'angle' and 'shift' to condition a generative model one,
-                and plot parameters ('padding', 'padding_value', 'cmap', 'origin', 'ylim')
+                and plot parameters ('padding', 'pad_value', 'cmap', 'origin', 'ylim')
         """
         num_samples = d**2
         disc_dim = self.discrete_dim
