@@ -1,9 +1,11 @@
-from typing import Type, Dict
+from typing import Type, Dict, Union, List
 
 from copy import deepcopy as dc
 
 import torch
 import torch.nn as nn
+
+from pyro.distributions.util import broadcast_shape
 
 
 def average_weights(ensemble: Dict[int, Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
@@ -44,6 +46,32 @@ def to_onehot(idx: torch.Tensor, n: int) -> torch.Tensor:
         idx = idx.unsqueeze(1)
     onehot = torch.zeros(idx.size(0), n)
     return onehot.scatter_(1, idx, 1)
+
+
+class Concat(nn.Module):
+    """
+    Module for concatenation of tensors
+    """
+    def __init__(self, allow_broadcast: bool = True):
+        """
+        Initializes module
+        """
+        self.allow_broadcast = allow_broadcast
+        super().__init__()
+
+    def forward(self, input_args: Union[List[torch.Tensor], torch.Tensor]
+                ) -> torch.Tensor:
+        """
+        Performs concatenation
+        """
+        if torch.is_tensor(input_args):
+            return input_args
+        input_args = [a.flatten(1) if a.ndim >= 4 else a for a in input_args]
+        if self.allow_broadcast:
+            shape = broadcast_shape(*[s.shape[:-1] for s in input_args]) + (-1,)
+            input_args = [s.expand(shape) for s in input_args]
+        out = torch.cat(input_args, dim=-1)
+        return out
 
 
 def set_deterministic_mode(seed: int) -> None:

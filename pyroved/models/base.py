@@ -13,7 +13,7 @@ from abc import abstractmethod
 import torch
 import torch.nn as nn
 
-from ..utils import init_dataloader, transform_coordinates, generate_grid
+from ..utils import init_dataloader, transform_coordinates, generate_grid, Concat
 
 tt = torch.tensor
 
@@ -127,7 +127,7 @@ class baseVAE(nn.Module):
         in a batch-by-batch fashion."""
 
         def inference(x: Tuple[torch.Tensor]) -> torch.Tensor:
-            x = torch.cat(x, -1).to(self.device)
+            x = Concat(x).to(self.device)
             with torch.no_grad():
                 encoded = self.encoder_z(x)
             encoded = torch.cat(encoded, -1).cpu()

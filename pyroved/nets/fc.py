@@ -10,37 +10,10 @@ from typing import List, Tuple, Type, Union
 
 import torch
 import torch.nn as nn
-from pyro.distributions.util import broadcast_shape
 
-from ..utils import get_activation
+from ..utils import get_activation, Concat
 
 tt = torch.tensor
-
-
-class Concat(nn.Module):
-    """
-    Module for concatenation of tensors
-    """
-    def __init__(self, allow_broadcast: bool = True):
-        """
-        Initializes module
-        """
-        self.allow_broadcast = allow_broadcast
-        super().__init__()
-
-    def forward(self, input_args: Union[List[torch.Tensor], torch.Tensor]
-                ) -> torch.Tensor:
-        """
-        Performs concatenation
-        """
-        if torch.is_tensor(input_args):
-            return input_args
-        input_args = [a.flatten(1) if a.ndim >= 4 else a for a in input_args]
-        if self.allow_broadcast:
-            shape = broadcast_shape(*[s.shape[:-1] for s in input_args]) + (-1,)
-            input_args = [s.expand(shape) for s in input_args]
-        out = torch.cat(input_args, dim=-1)
-        return out
 
 
 class fcEncoderNet(nn.Module):
