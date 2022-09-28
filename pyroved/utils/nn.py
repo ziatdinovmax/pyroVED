@@ -74,6 +74,16 @@ class Concat(nn.Module):
         return out
 
 
+def _to_device(input_data: Union[torch.Tensor, List[torch.Tensor]],
+               **kwargs) -> List[torch.Tensor]:
+    device = kwargs.get(
+            "device", 'cuda' if torch.cuda.is_available() else 'cpu')
+    if len(input_data) == 1:
+        input_data = input_data[0].to(device)
+        return input_data
+    return [t.to(device) for t in input_data]
+
+
 def set_deterministic_mode(seed: int) -> None:
     """Sets all torch manual seeds.
 

@@ -13,7 +13,7 @@ from abc import abstractmethod
 import torch
 import torch.nn as nn
 
-from ..utils import init_dataloader, transform_coordinates, generate_grid, Concat
+from ..utils import init_dataloader, transform_coordinates, generate_grid, _to_device
 
 tt = torch.tensor
 
@@ -121,13 +121,16 @@ class baseVAE(nn.Module):
     def _encode(
         self,
         *input_args: Tuple[Union[torch.Tensor, List[torch.Tensor]]],
+        device: str = None,
         **kwargs: int
     ) -> torch.Tensor:
         """Encodes data using a trained inference (encoder) network
         in a batch-by-batch fashion."""
 
+        device = self.device if device is None else device
+
         def inference(x: Tuple[torch.Tensor]) -> torch.Tensor:
-            x = Concat(x).to(self.device)
+            x = _to_device(x)
             with torch.no_grad():
                 encoded = self.encoder_z(x)
             encoded = torch.cat(encoded, -1).cpu()
@@ -139,8 +142,11 @@ class baseVAE(nn.Module):
             z_encoded.append(inference(x))
         return torch.cat(z_encoded)
 
-    def _decode(self, z_new: torch.Tensor, **kwargs: int) -> torch.Tensor:
+    def _decode(self, z_new: torch.Tensor, device: str = None,
+                **kwargs: int) -> torch.Tensor:
         """Decodes latent coordinates in a batch-by-batch fashion."""
+        
+        device = self.device if device is None else device
 
         def generator(z: List[torch.Tensor]) -> torch.Tensor:
             with torch.no_grad():
@@ -150,9 +156,9 @@ class baseVAE(nn.Module):
         z_new = init_dataloader(z_new, shuffle=False, **kwargs)
         if self.invariances:
             grid = self.grid
-            a = kwargs.get("angle", tt(0.)).to(self.device)
-            t = kwargs.get("shift", tt(0.)).to(self.device)
-            s = kwargs.get("scale", tt(1.)).to(self.device)
+            a = kwargs.get("angle", tt(0.)).to(device)
+            t = kwargs.get("shift", tt(0.)).to(device)
+            s = kwargs.get("scale", tt(1.)).to(device)
             grid = transform_coordinates(
                 grid.unsqueeze(0), a.unsqueeze(0),
                 t.unsqueeze(0), s.unsqueeze(0))
