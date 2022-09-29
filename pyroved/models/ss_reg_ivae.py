@@ -299,7 +299,7 @@ class ss_reg_iVAE(baseVAE):
         """
         if y is None:
             y = self.regressor(x_new, **kwargs)
-        z = self._encode(x_new.flatten(1), y, **kwargs)
+        z = self._encode(x_new, y, **kwargs)
         z_loc, z_scale = z.split(self.z_dim, 1)
         return z_loc, z_scale, y
 
