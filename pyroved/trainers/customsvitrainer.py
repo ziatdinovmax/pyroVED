@@ -108,7 +108,7 @@ class custom_SVItrainer:
             "device", 'cuda' if torch.cuda.is_available() else 'cpu')
         ########## Start New lines #########
         if data is None:
-            print("training data missing")
+            print("Full training data missing. Will work with small batch data")
         else:
             self.data = data
         ########## End New lines #########
