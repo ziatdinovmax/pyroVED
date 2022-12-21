@@ -1,5 +1,19 @@
 ######### This class is modified to pass additional arguments in "model", "data", "weight" as stated in comments under (new modification)
 ## SVI class is extended to incorporate custom physics driven loss with existing VAE loss during training process 
+
+import warnings
+
+import torch
+
+import pyro
+import pyro.optim
+import pyro.poutine as poutine
+from pyro.infer.abstract_infer import TracePosterior
+from pyro.infer.elbo import ELBO
+from pyro.infer.util import torch_item
+
+
+
 class custom_SVI(TracePosterior):
     """
     :param model: Initialized model. Must be a subclass of torch.nn.Module
