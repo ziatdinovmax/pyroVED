@@ -121,7 +121,7 @@ class auxSVItrainer:
             unsup_count += xs.shape[0]
             if i % p == 1:
                 # sample random batches xs and ys
-                xs, ys = loader_sup.next()
+                xs, ys = next(loader_sup)
                 # Compute supervised loss
                 _ = self.compute_loss(xs, ys, **kwargs)
 
