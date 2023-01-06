@@ -149,13 +149,14 @@ class auxSVItrainer:
 
     def evaluate_reg(self,
                      loader_val: Optional[torch.utils.data.DataLoader]) -> float:
-        correct = 0
+        correct, total = 0, 0
         with torch.no_grad():
             for data, gt in loader_val:
                 predicted = self.model.regressor(data)
                 mse = nn.functional.mse_loss(predicted, gt)
                 correct += mse
-        return correct
+                total += 1
+        return correct / total
 
     def step(self,
              loader_unsup: torch.utils.data.DataLoader,
