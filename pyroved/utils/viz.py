@@ -62,7 +62,7 @@ def plot_grid_traversal(imgdata: torch.Tensor, d: int,
      # Put on cpu in case all tensors are created on gpu by default
     grid = grid.cpu()
     extent = kwargs.get("extent")
-    extent_ = [e.cpu() for e in extent]
+    extent_ = [e.cpu() for e in extent] if extent else None
     plt.figure(figsize=(8, 8))
     plt.imshow(grid, cmap=kwargs.get("cmap", "gnuplot"),
                origin=kwargs.get("origin", "upper"),
