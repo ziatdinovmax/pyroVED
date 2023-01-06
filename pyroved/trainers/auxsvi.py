@@ -121,7 +121,7 @@ class auxSVItrainer:
             unsup_count += xs.shape[0]
             if i % p == 1:
                 # sample random batches xs and ys
-                xs, ys = loader_sup.next()
+                xs, ys = next(loader_sup)
                 # Compute supervised loss
                 _ = self.compute_loss(xs, ys, **kwargs)
 
@@ -149,14 +149,13 @@ class auxSVItrainer:
 
     def evaluate_reg(self,
                      loader_val: Optional[torch.utils.data.DataLoader]) -> float:
-        correct, total = 0, 0
+        correct = 0
         with torch.no_grad():
             for data, gt in loader_val:
                 predicted = self.model.regressor(data)
                 mse = nn.functional.mse_loss(predicted, gt)
                 correct += mse
-                total += 1
-        return correct / total
+        return correct
 
     def step(self,
              loader_unsup: torch.utils.data.DataLoader,
