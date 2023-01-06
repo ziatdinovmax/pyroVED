@@ -22,18 +22,19 @@ def init_dataloader(*args: torch.Tensor,
     >>> # Initialize dataloader
     >>> train_loader = init_dataloader(train_data)
     """
-    device_ = kwargs.get("device", 'cuda:0' if torch.cuda.is_available() else 'cpu')
+    device_ = kwargs.get("device")
+    generator_ = torch.Generator(device_) if device_ else None
     batch_size = kwargs.get("batch_size", 100)
     tensor_set = torch.utils.data.dataset.TensorDataset(*args)
     if random_sampler:
         sampler = torch.utils.data.RandomSampler(tensor_set)
         data_loader = torch.utils.data.DataLoader(
             dataset=tensor_set, batch_size=batch_size, sampler=sampler,
-            generator=torch.Generator(device_))
+            generator=generator_)
     else:
         data_loader = torch.utils.data.DataLoader(
             dataset=tensor_set, batch_size=batch_size, shuffle=shuffle,
-            generator=torch.Generator(device_))
+            generator=generator_)
     return data_loader
   
 
