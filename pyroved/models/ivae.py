@@ -13,7 +13,10 @@ from typing import Optional, Tuple, Union, List
 import pyro
 import pyro.distributions as dist
 import torch
-
+import pyro.contrib.gp as gp
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+import numpy as np
 from pyroved.models.base import baseVAE
 from pyroved.nets import fcDecoderNet, fcEncoderNet, sDecoderNet
 from pyroved.utils import (
@@ -307,3 +310,53 @@ class iVAE(baseVAE):
             elif self.ndim == 1:
                 plot_spect_grid(loc, d, **kwargs)
         return loc
+    
+    def predict_on_latent(self, train_data: torch.Tensor, gp_labels: torch.Tensor, gp_iterations=1, d=12):
+        """
+        Predicts on the latent grid using a trained GP
+        Args:
+            train_data: Training data
+            gp_labels: Labels for training data
+            gp_iterations: Number of iterations for GP training
+            d: Grid size
+        """
+        # Convert X and y to torch tensors
+        X = torch.tensor(train_data, dtype=torch.float32)
+        y = torch.tensor(gp_labels, dtype=torch.float32)
+
+        # Use VAE's encoder to transform X into the latent space
+        encoded_X = self.encode(X)[0]  # Assuming the encoder returns mean as the first element
+
+        # Define and train the GP model
+        kernel = gp.kernels.RBF(input_dim=encoded_X.shape[1])
+        gpr = gp.models.GPRegression(encoded_X, y, kernel)
+        optimizer = torch.optim.Adam(gpr.parameters(), lr=0.005)
+        loss_fn = pyro.infer.Trace_ELBO().differentiable_loss
+        for _ in tqdm(range(gp_iterations)):
+            optimizer.zero_grad()
+            loss = loss_fn(gpr.model, gpr.guide)
+            loss.backward()
+            optimizer.step()
+
+        # Generate the latent grid
+        z, (grid_x, grid_y) = generate_latent_grid(d)
+        z = torch.tensor(z, dtype=torch.float32)
+
+        # Predict on the latent grid using the trained GP
+        gpr.eval()
+        with torch.no_grad():
+            predictions, _ = gpr(z)
+            
+        x, y = np.array(z).T
+
+        plt.figure(figsize=(8, 8))
+        scatter = plt.scatter(x, y, c=predictions, cmap='viridis')
+        plt.colorbar(scatter, label='class Value')
+        plt.xticks(fontsize=14)
+        plt.yticks(fontsize=14)
+        plt.xlabel("$z_1$", fontsize=18)
+        plt.ylabel("$z_2$", fontsize=18)
+        plt.title('Spatial Data Visualization')
+        plt.show()
+        
+        return predictions
