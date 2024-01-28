@@ -644,3 +644,4 @@ def test_save_load_basevae(invariances):
     vae.load_weights("my_weights.pt")
     weights_loaded = vae.state_dict()
     assert_(assert_weights_equal(weights_loaded, weights_init))
+    

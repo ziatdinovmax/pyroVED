@@ -7,6 +7,7 @@ from .nn import (get_activation, get_bnorm, get_conv, get_maxpool,
                  Concat, _to_device)
 from .prob import get_sampler
 from .viz import plot_grid_traversal, plot_img_grid, plot_spect_grid
+from .gp import gp_model
 
 __all__ = ['generate_grid', 'transform_coordinates', 'generate_latent_grid',
            'get_sampler', 'init_dataloader', 'init_ssvae_dataloaders',

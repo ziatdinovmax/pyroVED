@@ -9,20 +9,18 @@ Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
 
 from typing import Optional, Tuple, Union, List
-
 import pyro
 import pyro.distributions as dist
 import torch
-import pyro.contrib.gp as gp
-from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
+from tqdm import tqdm
 from pyroved.models.base import baseVAE
 from pyroved.nets import fcDecoderNet, fcEncoderNet, sDecoderNet
 from pyroved.utils import (
     generate_grid, generate_latent_grid, get_sampler,
     plot_img_grid, plot_spect_grid, set_deterministic_mode,
-    to_onehot, transform_coordinates
+    to_onehot, transform_coordinates, gp_model
 )
 
 
@@ -315,7 +313,7 @@ class iVAE(baseVAE):
         """
         Predicts on the latent grid using a trained GP
         Args:
-            train_data: Training data
+            train_data: Training data used to train the VAE
             gp_labels: Labels for training data
             gp_iterations: Number of iterations for GP training
             d: Grid size
@@ -327,11 +325,8 @@ class iVAE(baseVAE):
         # Use VAE's encoder to transform X into the latent space
         encoded_X = self.encode(X)[0]  # Assuming the encoder returns mean as the first element
 
-        # Define and train the GP model
-        kernel = gp.kernels.RBF(input_dim=encoded_X.shape[1])
-        gpr = gp.models.GPRegression(encoded_X, y, kernel)
-        optimizer = torch.optim.Adam(gpr.parameters(), lr=0.005)
-        loss_fn = pyro.infer.Trace_ELBO().differentiable_loss
+        gpr, optimizer, loss_fn = gp_model(input_dim=encoded_X.shape[1], encoded_X=encoded_X, y=y)
+        gp_iterations = 1
         for _ in tqdm(range(gp_iterations)):
             optimizer.zero_grad()
             loss = loss_fn(gpr.model, gpr.guide)
@@ -346,17 +341,23 @@ class iVAE(baseVAE):
         gpr.eval()
         with torch.no_grad():
             predictions, _ = gpr(z)
-            
         x, y = np.array(z).T
-
+    
+        
+        self.manifold2d(d=d, cmap='viridis')
+        # Plot the second figure in the second subplot
         plt.figure(figsize=(8, 8))
-        scatter = plt.scatter(x, y, c=predictions, cmap='viridis')
-        plt.colorbar(scatter, label='class Value')
+        predictions_reshaped = predictions.reshape(d, d)
+
+        # Plot the 2D array using imshow
+        plt.figure(figsize=(8, 8))
+        heatmap = plt.imshow(predictions_reshaped, cmap='viridis', aspect='auto')
+        plt.colorbar(heatmap, label='Prediction Value')
         plt.xticks(fontsize=14)
         plt.yticks(fontsize=14)
-        plt.xlabel("$z_1$", fontsize=18)
-        plt.ylabel("$z_2$", fontsize=18)
-        plt.title('Spatial Data Visualization')
+        plt.xlabel("$z_1$", fontsize=14)
+        plt.ylabel("$z_2$", fontsize=14)
+        plt.title('Predictions Visualization')
         plt.show()
-        
-        return predictions
+            
+        return 
