@@ -645,3 +645,26 @@ def test_save_load_basevae(invariances):
     weights_loaded = vae.state_dict()
     assert_(assert_weights_equal(weights_loaded, weights_init))
     
+
+    
+def test_ivae_predict_on_latent():
+    num_samples = 10
+    train_data = torch.randn(num_samples, 5,5)  # Example training data
+    gp_labels = torch.randint(0, 2, (num_samples,))  # Example GP labels
+    gp_iterations = 1
+    d = 12
+    in_dim = (5,5)
+
+    vae = models.iVAE(in_dim, latent_dim=2, invariances=None, seed=0)
+    z, predictions = vae.predict_on_latent(train_data, gp_labels, gp_iterations, d, plot=False)
+
+    assert isinstance(z, torch.Tensor), "z should be a torch.Tensor"
+    assert isinstance(predictions, torch.Tensor), "predictions should be a torch.Tensor"
+    assert z.dim() == 2, "z should be a 2-dimensional tensor"
+    assert predictions.dim() == 1, "predictions should be a 1-dimensional tensor"
+
+    # Check the shapes
+    expected_z_shape = (d * d, 2)  # Assuming this is the expected shape
+    assert z.shape == expected_z_shape, f"Shape of z should be {expected_z_shape}"
+    assert predictions.shape[0] == d * d, "Length of predictions should match number of points in grid"
+

@@ -4,13 +4,13 @@ import torch
 
 def gp_model(input_dim: int = None, encoded_X: torch.Tensor = None, y: torch.Tensor = None):
         """
-        Define and train a GP model.
+        Gaussian Process model.
         Args:
             input_dim: Dimensionality of the input data.
             encoded_X: Encoded data.
             y: Target data.
         Returns:
-            gpr: Trained GP model.
+            gpr: GP regression model.
             optimizer: Optimizer used to train the GP model.
             loss_fn: Loss function used to train the GP model.
         """

@@ -309,7 +309,7 @@ class iVAE(baseVAE):
                 plot_spect_grid(loc, d, **kwargs)
         return loc
     
-    def predict_on_latent(self, train_data: torch.Tensor, gp_labels: torch.Tensor, gp_iterations=1, d=12):
+    def predict_on_latent(self, train_data: torch.Tensor, gp_labels: torch.Tensor, gp_iterations=1, d=12, plot: bool = False):
         """
         Predicts on the latent grid using a trained GP
         Args:
@@ -317,6 +317,10 @@ class iVAE(baseVAE):
             gp_labels: Labels for training data
             gp_iterations: Number of iterations for GP training
             d: Grid size
+        
+        Returns:
+            z: Latent grid
+            predictions: Predictions on the latent grid
         """
         # Convert X and y to torch tensors
         X = torch.tensor(train_data, dtype=torch.float32)
@@ -326,7 +330,6 @@ class iVAE(baseVAE):
         encoded_X = self.encode(X)[0]  # Assuming the encoder returns mean as the first element
 
         gpr, optimizer, loss_fn = gp_model(input_dim=encoded_X.shape[1], encoded_X=encoded_X, y=y)
-        gp_iterations = 1
         for _ in tqdm(range(gp_iterations)):
             optimizer.zero_grad()
             loss = loss_fn(gpr.model, gpr.guide)
@@ -343,21 +346,22 @@ class iVAE(baseVAE):
             predictions, _ = gpr(z)
         x, y = np.array(z).T
     
-        
-        self.manifold2d(d=d, cmap='viridis')
-        # Plot the second figure in the second subplot
-        plt.figure(figsize=(8, 8))
-        predictions_reshaped = predictions.reshape(d, d)
+        if plot:
+            self.manifold2d(d=d, cmap='viridis')
+            # Plot the second figure in the second subplot
+            plt.figure(figsize=(8, 8))
+            predictions_reshaped = predictions.reshape(d, d)
 
-        # Plot the 2D array using imshow
-        plt.figure(figsize=(8, 8))
-        heatmap = plt.imshow(predictions_reshaped, cmap='viridis', aspect='auto')
-        plt.colorbar(heatmap, label='Prediction Value')
-        plt.xticks(fontsize=14)
-        plt.yticks(fontsize=14)
-        plt.xlabel("$z_1$", fontsize=14)
-        plt.ylabel("$z_2$", fontsize=14)
-        plt.title('Predictions Visualization')
-        plt.show()
+            # Plot the 2D array using imshow
+            plt.figure(figsize=(8, 8))
+            heatmap = plt.imshow(predictions_reshaped, cmap='viridis', aspect='auto')
+            plt.colorbar(heatmap, label='Prediction Value')
+            plt.xticks(fontsize=14)
+            plt.yticks(fontsize=14)
+            plt.xlabel("$z_1$", fontsize=14)
+            plt.ylabel("$z_2$", fontsize=14)
+            plt.title('Predictions Visualization')
+            plt.show()
+        
             
-        return 
+        return z, predictions
