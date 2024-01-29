@@ -319,6 +319,7 @@ class iVAE(baseVAE):
             d: Grid size
         
         Returns:
+            z: Latent grid
             z_decoded: Decoded latent grid
             predictions: Predictions on the latent grid
         """
