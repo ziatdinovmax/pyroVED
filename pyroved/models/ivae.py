@@ -360,4 +360,4 @@ class iVAE(baseVAE):
             plt.show()
         
             
-        return z_decoded, predictions
+        return (z, z_decoded), predictions

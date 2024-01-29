@@ -656,15 +656,12 @@ def test_ivae_predict_on_latent():
     in_dim = (5,5)
 
     vae = models.iVAE(in_dim, latent_dim=2, invariances=None, seed=0)
-    z, predictions = vae.predict_on_latent(train_data, gp_labels, gp_iterations, d, plot=False)
-
+    (z, z_decoded) , predictions = vae.predict_on_latent(train_data, gp_labels, gp_iterations, d, plot=False)
     assert isinstance(z, torch.Tensor), "z should be a torch.Tensor"
     assert isinstance(predictions, torch.Tensor), "predictions should be a torch.Tensor"
-
-    assert z.dim() == 3, "z should be a 3-dimensional tensor"
+    assert z_decoded.dim() == 3, "z should be a 3-dimensional tensor"
     assert predictions.dim() == 1, "predictions should be a 1-dimensional tensor"
     # Check the shapes
     expected_z_shape = (d * d,  5, 5)  # Assuming this is the expected shape
-    assert z.shape == expected_z_shape, f"Shape of z should be {expected_z_shape}"
+    assert z_decoded.shape == expected_z_shape, f"Shape of z should be {expected_z_shape}"
     assert predictions.shape[0] == d * d, "Length of predictions should match number of points in grid"
-

@@ -14,4 +14,3 @@ def test_gp_model_output_shape():
     with torch.no_grad():
         predictions, _ = gpr(encoded_X)
     assert predictions.shape == y.shape, "Output tensor shape mismatch"
-
