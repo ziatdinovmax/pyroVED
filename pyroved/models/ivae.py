@@ -309,7 +309,7 @@ class iVAE(baseVAE):
                 plot_spect_grid(loc, d, **kwargs)
         return loc
     
-    def predict_on_latent(self, train_data: torch.Tensor, gp_labels: torch.Tensor, gp_iterations=1, d=12, plot: bool = False):
+    def predict_on_latent(self, train_data: torch.Tensor, gp_labels: torch.Tensor, gp_iterations: int = 1, d: int = 12, plot: bool = False):
         """
         Predicts on the latent grid using a trained GP
         Args:
@@ -319,7 +319,7 @@ class iVAE(baseVAE):
             d: Grid size
         
         Returns:
-            z: Latent grid
+            z_decoded: Decoded latent grid
             predictions: Predictions on the latent grid
         """
         # Convert X and y to torch tensors
@@ -329,12 +329,8 @@ class iVAE(baseVAE):
         # Use VAE's encoder to transform X into the latent space
         encoded_X = self.encode(X)[0]  # Assuming the encoder returns mean as the first element
 
-        gpr, optimizer, loss_fn = gp_model(input_dim=encoded_X.shape[1], encoded_X=encoded_X, y=y)
-        for _ in tqdm(range(gp_iterations)):
-            optimizer.zero_grad()
-            loss = loss_fn(gpr.model, gpr.guide)
-            loss.backward()
-            optimizer.step()
+        gpr = gp_model(input_dim=encoded_X.shape[1], encoded_X=encoded_X, y=y, gp_iterations=gp_iterations)
+
 
         # Generate the latent grid
         z, (grid_x, grid_y) = generate_latent_grid(d)
@@ -345,7 +341,7 @@ class iVAE(baseVAE):
         with torch.no_grad():
             predictions, _ = gpr(z)
         x, y = np.array(z).T
-    
+        z_decoded = self.manifold2d(d, plot=False)
         if plot:
             self.manifold2d(d=d, cmap='viridis')
             # Plot the second figure in the second subplot
@@ -364,4 +360,4 @@ class iVAE(baseVAE):
             plt.show()
         
             
-        return z, predictions
+        return z_decoded, predictions
