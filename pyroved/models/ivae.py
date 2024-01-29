@@ -9,17 +9,18 @@ Created by Maxim Ziatdinov (email: ziatdinovmax@gmail.com)
 """
 
 from typing import Optional, Tuple, Union, List
-
 import pyro
 import pyro.distributions as dist
 import torch
-
+import matplotlib.pyplot as plt
+import numpy as np
+from tqdm import tqdm
 from pyroved.models.base import baseVAE
 from pyroved.nets import fcDecoderNet, fcEncoderNet, sDecoderNet
 from pyroved.utils import (
     generate_grid, generate_latent_grid, get_sampler,
     plot_img_grid, plot_spect_grid, set_deterministic_mode,
-    to_onehot, transform_coordinates
+    to_onehot, transform_coordinates, gp_model
 )
 
 
@@ -307,3 +308,57 @@ class iVAE(baseVAE):
             elif self.ndim == 1:
                 plot_spect_grid(loc, d, **kwargs)
         return loc
+    
+    def predict_on_latent(self, train_data: torch.Tensor, gp_labels: torch.Tensor, gp_iterations: int = 1, d: int = 12, plot: bool = False):
+        """
+        Predicts on the latent grid using a trained GP
+        Args:
+            train_data: Training data used to train the VAE
+            gp_labels: Labels for training data
+            gp_iterations: Number of iterations for GP training
+            d: Grid size
+        
+        Returns:
+            z: Latent grid
+            z_decoded: Decoded latent grid
+            predictions: Predictions on the latent grid
+        """
+        # Convert X and y to torch tensors
+        X = torch.tensor(train_data, dtype=torch.float32)
+        y = torch.tensor(gp_labels, dtype=torch.float32)
+
+        # Use VAE's encoder to transform X into the latent space
+        encoded_X = self.encode(X)[0]  # Assuming the encoder returns mean as the first element
+
+        gpr = gp_model(input_dim=encoded_X.shape[1], encoded_X=encoded_X, y=y, gp_iterations=gp_iterations)
+
+
+        # Generate the latent grid
+        z, (grid_x, grid_y) = generate_latent_grid(d)
+        z = torch.tensor(z, dtype=torch.float32)
+
+        # Predict on the latent grid using the trained GP
+        gpr.eval()
+        with torch.no_grad():
+            predictions, _ = gpr(z)
+        x, y = np.array(z).T
+        z_decoded = self.manifold2d(d, plot=False)
+        if plot:
+            self.manifold2d(d=d, cmap='viridis')
+            # Plot the second figure in the second subplot
+            plt.figure(figsize=(8, 8))
+            predictions_reshaped = predictions.reshape(d, d)
+
+            # Plot the 2D array using imshow
+            plt.figure(figsize=(8, 8))
+            heatmap = plt.imshow(predictions_reshaped, cmap='viridis', aspect='auto')
+            plt.colorbar(heatmap, label='Prediction Value')
+            plt.xticks(fontsize=14)
+            plt.yticks(fontsize=14)
+            plt.xlabel("$z_1$", fontsize=14)
+            plt.ylabel("$z_2$", fontsize=14)
+            plt.title('Predictions Visualization')
+            plt.show()
+        
+            
+        return (z, z_decoded), predictions
